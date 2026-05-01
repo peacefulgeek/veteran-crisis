@@ -177,6 +177,64 @@ export function registerSiteRoutes(app) {
     }
   });
 
+  // ── /feed.xml — RSS 2.0 with content:encoded for newsletter platforms + aggregators
+  app.get('/feed.xml', async (_req, res) => {
+    const conn = await getConn();
+    try {
+      const [rows] = await conn.query(
+        `SELECT slug, title, metaDescription, body, heroUrl, author, publishedAt, lastModifiedAt, category
+           FROM articles WHERE status='published' ORDER BY publishedAt DESC LIMIT 30`,
+      );
+      const escape = (s) => String(s || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+      const cdata = (s) => `<![CDATA[${String(s || '').replace(/]]>/g, ']]]]><![CDATA[>')}]]>`;
+      const rfc822 = (d) => new Date(d || Date.now()).toUTCString();
+      const buildDate = rfc822(rows[0]?.publishedAt || Date.now());
+      const items = rows.map(r => {
+        const url = `${SITE.baseUrl}/articles/${r.slug}`;
+        const enclosure = r.heroUrl
+          ? `<enclosure url="${escape(r.heroUrl)}" type="image/webp" length="0" />`
+          : '';
+        return [
+          '<item>',
+          `<title>${escape(r.title)}</title>`,
+          `<link>${escape(url)}</link>`,
+          `<guid isPermaLink="true">${escape(url)}</guid>`,
+          `<pubDate>${rfc822(r.publishedAt)}</pubDate>`,
+          `<dc:creator>${escape(r.author || SITE.author)}</dc:creator>`,
+          r.category ? `<category>${escape(r.category)}</category>` : '',
+          `<description>${cdata(r.metaDescription || '')}</description>`,
+          `<content:encoded>${cdata(r.body || '')}</content:encoded>`,
+          enclosure,
+          '</item>',
+        ].filter(Boolean).join('');
+      }).join('\n');
+      const xml = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom">',
+        '<channel>',
+        `<title>${escape(SITE.name)}</title>`,
+        `<link>${escape(SITE.baseUrl)}</link>`,
+        `<atom:link href="${escape(SITE.baseUrl)}/feed.xml" rel="self" type="application/rss+xml" />`,
+        `<description>${escape(SITE.oneLine || 'Honest writing for veterans, spouses, and the people who love them.')}</description>`,
+        '<language>en-us</language>',
+        `<lastBuildDate>${buildDate}</lastBuildDate>`,
+        `<managingEditor>contact@veterancrisis.com (${escape(SITE.author)})</managingEditor>`,
+        `<webMaster>contact@veterancrisis.com (${escape(SITE.author)})</webMaster>`,
+        '<generator>Veteran Crisis Editorial Engine</generator>',
+        items,
+        '</channel>',
+        '</rss>',
+      ].join('\n');
+      res.set('Cache-Control', 'public, max-age=900').type('application/rss+xml').send(xml);
+    } catch (e) {
+      res.status(500).type('text/plain').send('feed error');
+    } finally {
+      await conn.end();
+    }
+  });
+
   // ── llms.txt + llms-full.txt
   app.get('/llms.txt', (_req, res) => {
     res

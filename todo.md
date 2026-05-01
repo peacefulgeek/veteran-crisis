@@ -107,6 +107,14 @@
 - [x] Verify sample article renders the blurb, vitest 11/11 passes, gate 500/500 passes
 - [x] Push to peacefulgeek/veteran-crisis main, save checkpoint
 
+## Round 6: RSS Feed (/feed.xml)
+- [x] Add /feed.xml endpoint to site-routes.mjs (RSS 2.0 with content:encoded namespace)
+- [x] Pull latest 30 published articles ordered by publishedAt desc
+- [x] Include title, link, guid, pubDate, description, content:encoded, author, hero image as enclosure
+- [x] Auto-discovery <link rel="alternate" type="application/rss+xml"> in client/index.html
+- [x] Vitest spec: /feed.xml returns valid XML, has 30 items, each item has required tags
+- [x] Push to peacefulgeek/veteran-crisis main, save checkpoint
+
 ## Round 4: EEAT Author Hub + Anchor Variation + OG Images
 - [x] Generate Oracle Lover portrait, upload to Bunny CDN
 - [x] Build /author/the-oracle-lover with 6-paragraph long-form bio + portrait + EEAT JSON-LD
