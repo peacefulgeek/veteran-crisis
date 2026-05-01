@@ -108,11 +108,11 @@
 - [x] Push to peacefulgeek/veteran-crisis main, save checkpoint
 
 ## Round 4: EEAT Author Hub + Anchor Variation + OG Images
-- [ ] Generate Oracle Lover portrait, upload to Bunny CDN
-- [ ] Build /author/the-oracle-lover with 6-paragraph long-form bio + portrait + EEAT JSON-LD
-- [ ] Write 10–12 natural theoraclelover.com anchor-text variants
-- [ ] Rewrite all 500 byline asides distributing the anchor variants (no two consecutive identical)
-- [ ] Generate 30 OG share images (1200×630 WebP) for published articles
-- [ ] Upload OG images to Bunny CDN
-- [ ] Add ogImage column to articles, populate, wire og:image + twitter:image meta on article detail
-- [ ] Verify, run vitest, commit + push to peacefulgeek/veteran-crisis, save checkpoint
+- [x] Generate Oracle Lover portrait, upload to Bunny CDN
+- [x] Build /author/the-oracle-lover with 6-paragraph long-form bio + portrait + EEAT JSON-LD
+- [x] Write 10–12 natural theoraclelover.com anchor-text variants
+- [x] Rewrite all 500 byline asides distributing the anchor variants (no two consecutive identical)
+- [x] Generate 30 OG share images (1200×630 WebP) for published articles
+- [x] Upload OG images to Bunny CDN
+- [x] Add ogImage column to articles, populate, wire og:image + twitter:image meta on article detail
+- [x] Verify, run vitest, commit + push to peacefulgeek/veteran-crisis, save checkpoint
