@@ -1,25 +1,39 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "wouter";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Phone } from "lucide-react";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Home" },
   { href: "/articles", label: "Articles" },
+  { href: "/assessments", label: "Self Check-Ins" },
+  { href: "/supplements", label: "Herbs & Supplements" },
+  { href: "/recommended", label: "Tools" },
   { href: "/about", label: "About" },
-  { href: "/recommended", label: "Tools We Recommend" },
-  { href: "/contact", label: "Contact" },
 ];
+
+export function CrisisLineBar() {
+  return (
+    <div className="bg-[#1A2018] text-[#F6F4EE] text-xs md:text-sm">
+      <div className="max-w-7xl mx-auto px-5 md:px-8 py-2 flex flex-col sm:flex-row items-center justify-between gap-1">
+        <span className="flex items-center gap-2">
+          <Phone size={14} className="text-[#C9B27A]" />
+          <span>If you are in crisis: dial <strong className="text-[#C9B27A]">988, then press 1</strong> — Veterans Crisis Line</span>
+        </span>
+        <span className="hidden sm:inline text-[#F6F4EE]/60">Or text <strong className="text-[#C9B27A]">838255</strong></span>
+      </div>
+    </div>
+  );
+}
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
   return (
-    <header className="sticky top-0 z-50 bg-[#F6F4EE]/85 backdrop-blur-md border-b border-[#1A2018]/8">
+    <header className="sticky top-0 z-50 bg-[#F6F4EE]/92 backdrop-blur-md border-b border-[#1A2018]/8">
       <nav className="max-w-7xl mx-auto px-5 md:px-8 py-4 flex items-center justify-between">
         <Link
           href="/"
           className="font-serif text-xl md:text-2xl tracking-tight text-[#1A2018] hover:text-[#6B7A3C] transition-colors no-underline"
         >
-          The Veteran Shift
+          Veteran Crisis
         </Link>
         <ul className="hidden md:flex items-center gap-8">
           {NAV_ITEMS.map(item => (
@@ -67,7 +81,7 @@ export function SiteFooter() {
     <footer className="border-t border-[#1A2018]/10 bg-[#EFEBDF] mt-24">
       <div className="max-w-7xl mx-auto px-5 md:px-8 py-12 grid md:grid-cols-3 gap-10">
         <div>
-          <p className="font-serif text-xl text-[#1A2018]">The Veteran Shift</p>
+          <p className="font-serif text-xl text-[#1A2018]">Veteran Crisis</p>
           <p className="text-sm text-[#1A2018]/70 mt-2 leading-relaxed">
             Honest, plainspoken writing on the long work of becoming yourself
             again on the other side of service.
@@ -92,7 +106,7 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="border-t border-[#1A2018]/10 px-5 md:px-8 py-6 text-center text-xs text-[#1A2018]/60">
-        © {new Date().getFullYear()} The Veteran Shift. Written by The Oracle Lover. As an Amazon Associate we earn from qualifying purchases.
+        © {new Date().getFullYear()} Veteran Crisis. Written by The Oracle Lover. As an Amazon Associate we earn from qualifying purchases.
       </div>
     </footer>
   );
@@ -101,6 +115,7 @@ export function SiteFooter() {
 export function SiteShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-[#F6F4EE] text-[#1A2018] font-sans antialiased">
+      <CrisisLineBar />
       <SiteHeader />
       <main>{children}</main>
       <SiteFooter />

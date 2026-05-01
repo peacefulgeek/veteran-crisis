@@ -13,6 +13,8 @@ import Privacy from "./pages/Privacy";
 import Disclosures from "./pages/Disclosures";
 import Contact from "./pages/Contact";
 import Author from "./pages/Author";
+import Assessments from "./pages/Assessments";
+import Supplements from "./pages/Supplements";
 
 function Router() {
   return (
@@ -22,6 +24,8 @@ function Router() {
       <Route path="/articles/:slug" component={ArticleDetail} />
       <Route path="/about" component={About} />
       <Route path="/recommended" component={Recommended} />
+      <Route path="/assessments" component={Assessments} />
+      <Route path="/supplements" component={Supplements} />
       <Route path="/privacy" component={Privacy} />
       <Route path="/disclosures" component={Disclosures} />
       <Route path="/contact" component={Contact} />

@@ -86,7 +86,7 @@ async function runPublishOne() {
 async function runSitemapPing() {
   const conn = await getConn();
   try {
-    const url = `https://theveteranshift.com/sitemap.xml`;
+    const url = `https://veterancrisis.com/sitemap.xml`;
     await fetch(`https://www.google.com/ping?sitemap=${encodeURIComponent(url)}`).catch(() => null);
     await fetch(`https://www.bing.com/ping?sitemap=${encodeURIComponent(url)}`).catch(() => null);
     await logRun(conn, 'sitemap-ping', 'ok', url);

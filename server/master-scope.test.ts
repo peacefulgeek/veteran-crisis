@@ -32,19 +32,19 @@ function fakeRes() {
 }
 
 describe("master scope §6: WWW redirects 301 to apex (FIRST middleware)", () => {
-  it("redirects www.theveteranshift.com to https://theveteranshift.com with 301", async () => {
+  it("redirects www.veterancrisis.com to https://veterancrisis.com with 301", async () => {
     const mw = wwwToApexRedirect();
-    const req = fakeReq("www.theveteranshift.com", "/articles/x");
+    const req = fakeReq("www.veterancrisis.com", "/articles/x");
     const res = fakeRes();
     let nextCalled = false;
     await mw(req, res, () => { nextCalled = true; });
     expect(res.statusCode).toBe(301);
-    expect(res.headers.Location).toBe("https://theveteranshift.com/articles/x");
+    expect(res.headers.Location).toBe("https://veterancrisis.com/articles/x");
     expect(nextCalled).toBe(false);
   });
   it("does NOT redirect apex requests", async () => {
     const mw = wwwToApexRedirect();
-    const req = fakeReq("theveteranshift.com", "/");
+    const req = fakeReq("veterancrisis.com", "/");
     const res = fakeRes();
     let nextCalled = false;
     await mw(req, res, () => { nextCalled = true; });
@@ -93,7 +93,7 @@ describe("master scope §10: quality gate enforces zero-tolerance banned union",
 });
 
 describe("master scope §3 + §15: site identity wired correctly", () => {
-  it("apex domain", () => { expect(SITE.apex).toBe("theveteranshift.com"); });
+  it("apex domain", () => { expect(SITE.apex).toBe("veterancrisis.com"); });
   it("author name", () => { expect(SITE.author).toBe("The Oracle Lover"); });
   it("amazon affiliate tag", () => { expect(SITE.amazonTag).toBe("spankyspinola-20"); });
 });
@@ -114,6 +114,6 @@ describe("master scope §6: robots.txt allow-lists all four AI bots", () => {
     for (const bot of ["GPTBot", "ClaudeBot", "PerplexityBot", "Google-Extended"]) {
       expect(body).toContain(`User-agent: ${bot}`);
     }
-    expect(body).toContain("Sitemap: https://theveteranshift.com/sitemap.xml");
+    expect(body).toContain("Sitemap: https://veterancrisis.com/sitemap.xml");
   });
 });

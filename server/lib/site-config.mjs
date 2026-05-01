@@ -1,8 +1,8 @@
 // Per-site identity. Hardcoded by design (master scope §9, §13).
 export const SITE = {
-  name: 'The Veteran Shift',
-  apex: 'theveteranshift.com',
-  baseUrl: 'https://theveteranshift.com',
+  name: 'Veteran Crisis',
+  apex: 'veterancrisis.com',
+  baseUrl: 'https://veterancrisis.com',
   niche: 'Military-to-Civilian Transition',
   oneLine:
     'The real resource for military-to-civilian transition: the identity piece, the culture shock, the VA maze, the career pivot, and the relationships that get strained when you become a different person.',
@@ -11,10 +11,11 @@ export const SITE = {
   authorUrl: 'https://theoraclelover.com',
   authorCred: 'Intuitive Educator & Oracle Guide',
   amazonTag: 'spankyspinola-20',
-  // Bunny CDN — hardcode per master scope §9. (placeholders until user supplies real zone)
-  bunnyStorageZone: 'veteran-shift',
-  bunnyApiKey: 'PLACEHOLDER-REPLACE-WITH-REAL',
-  bunnyPullZone: 'https://veteran-shift.b-cdn.net',
+  // Bunny CDN — production credentials hardcoded per master scope §9.
+  // Dedicated zone for veteran-crisis (peacefulgeek), NY region, public pull zone.
+  bunnyStorageZone: 'veteran-crisis',
+  bunnyApiKey: '42c5b84f-70e4-493c-98cacd9b0731-f166-4832',
+  bunnyPullZone: 'https://veteran-crisis.b-cdn.net',
   bunnyHostname: 'ny.storage.bunnycdn.com',
 };
 
@@ -73,4 +74,4 @@ export const AUTH_SOURCES = [
 ];
 
 export const HEALTH_DISCLAIMER =
-  'Content on theveteranshift.com is for educational purposes only. If you are experiencing mental health difficulties, please contact the Veterans Crisis Line: 988, then Press 1.';
+  'Content on veterancrisis.com is for educational purposes only. If you are experiencing mental health difficulties, please contact the Veterans Crisis Line: 988, then Press 1.';

@@ -85,3 +85,17 @@
 - [x] §23 report block emitted
 - [x] vitest 11/11 passing
 - [x] Checkpoint saved
+
+## VeteranCrisis.com Migration (Round 2)
+- [ ] Swap apex from theveteranshift.com → veterancrisis.com everywhere (site-config, sitemap, robots, llms, OG/Twitter, JSON-LD, canonical, README, footer)
+- [ ] Update site name + tagline accordingly
+- [ ] Build /assessments page with 11 nurturing self-assessments
+- [ ] Build /supplements page (Herbs / TCM / Supplements) with 200+ items, 3 sentences each, image, verified ASIN, my Amazon tag spankyspinola-20
+- [ ] Migrate every hero image to Bunny CDN as compressed WebP (storage zone: peacefulgeek), no local storage afterwards
+- [ ] Migrate every supplement image to Bunny CDN as compressed WebP
+- [ ] Update DB hero_url + supplement image URLs to Bunny URLs
+- [ ] Confirm zero Manus dependencies in production code paths (no /manus-storage/, no built-in forge calls in runtime)
+- [ ] Confirm crons are in-code (node-cron) only — no Manus scheduler
+- [ ] Confirm 500 articles seeded, 1800+ words, gates passing, distribution healthy (not all one day)
+- [ ] Push to peacefulgeek/veteran-crisis via SSH (read github-push-workflow + conscious-elder-bunny skills)
+- [ ] Emit §22 audit + §23 report + push hashtag

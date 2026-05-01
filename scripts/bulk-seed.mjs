@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Bulk seed The Veteran Shift: 30 published + 470 queued (500 total).
+// Bulk seed Veteran Crisis: 30 published + 470 queued (500 total).
 // Master scope §15: live-articles target 30 published at launch.
 // Per-site scope: 23% of articles include a backlink to theoraclelover.com.
 

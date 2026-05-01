@@ -9,7 +9,7 @@ export default function Disclosures() {
 
         <h2>Amazon Associates</h2>
         <p>
-          The Veteran Shift is a participant in the Amazon Services LLC
+          Veteran Crisis is a participant in the Amazon Services LLC
           Associates Program, an affiliate advertising program designed to
           provide a means for sites to earn advertising fees by advertising and
           linking to amazon.com. As an Amazon Associate we earn from qualifying
@@ -46,7 +46,7 @@ export default function Disclosures() {
 
         <h2>Medical, legal, and financial information</h2>
         <p>
-          The Veteran Shift is not a medical, legal, or financial provider.
+          Veteran Crisis is not a medical, legal, or financial provider.
           Articles are written for general education. For decisions about your
           health, your benefits, or your money, consult a licensed professional
           in your jurisdiction.

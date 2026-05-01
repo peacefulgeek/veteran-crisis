@@ -11,7 +11,7 @@ const BUNNY_HOSTNAME = SITE.bunnyHostname;
 // All hosted on Unsplash CDN (no repo images per master scope §3). When Bunny
 // credentials are provided, the assignHeroImage path below mirrors each photo
 // into the Bunny pull zone and returns the Bunny URL instead.
-const HERO_LIBRARY = [
+export const HERO_LIBRARY = [
   // Morning / new chapter
   'https://images.unsplash.com/photo-1506744038136-46273834b3fb',     // misty mountain dawn
   'https://images.unsplash.com/photo-1500382017468-9049fed747ef',     // open road golden hour
@@ -29,7 +29,7 @@ const HERO_LIBRARY = [
   'https://images.unsplash.com/photo-1497032628192-86f99bcd76bc',     // resume on desk
   // School / GI Bill
   'https://images.unsplash.com/photo-1503676260728-1c00da094a0b',     // student desk window
-  'https://images.unsplash.com/photo-1523050854058-8df90110c9f1',     // graduation toss
+  'https://images.unsplash.com/photo-1571260899304-425eee4c7efc',     // graduation cap toss
   'https://images.unsplash.com/photo-1606761568499-6d2451b23c66',     // college library
   'https://images.unsplash.com/photo-1517048676732-d65bc937f952',     // group study coffee
   // Health / mental
@@ -40,17 +40,17 @@ const HERO_LIBRARY = [
   // Marriage / relationships
   'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e',     // couple kitchen morning
   'https://images.unsplash.com/photo-1518791841217-8f162f1e1131',     // couple walking field
-  'https://images.unsplash.com/photo-1520975918318-c41a13c4a6b8',     // couple dinner candles
+  'https://images.unsplash.com/photo-1543946207-39bd91e70ca7',     // couple dinner table
   // Mentor / community
   'https://images.unsplash.com/photo-1521791136064-7986c2920216',     // mentor shaking hands
   'https://images.unsplash.com/photo-1542744173-8e7e53415bb0',        // workshop classroom
   'https://images.unsplash.com/photo-1543269865-cbf427effbad',        // brainstorm team table
   // Faith / meaning
   'https://images.unsplash.com/photo-1490806843957-31f4c9a91c65',     // open journal hands
-  'https://images.unsplash.com/photo-1490357890860-32a23ee78540',     // chapel light beam
+  'https://images.unsplash.com/photo-1507692049790-de58290a4334',     // chapel light beam
   'https://images.unsplash.com/photo-1518770660439-4636190af475',     // circuit detail (skills)
   // Outdoor / restoration
-  'https://images.unsplash.com/photo-1528752647284-25f2186b3aa0',     // hiker pause vista
+  'https://images.unsplash.com/photo-1551632811-561732d1e306',     // hiker pause vista
   'https://images.unsplash.com/photo-1500964757637-c85e8a162699',     // dock at dawn
   'https://images.unsplash.com/photo-1507525428034-b723cf961d3e',     // beach lone walker
   'https://images.unsplash.com/photo-1499856871958-5b9627545d1a',     // dog on field
@@ -66,17 +66,27 @@ const HERO_LIBRARY = [
   'https://images.unsplash.com/photo-1494790108377-be9c29b29330',     // smiling woman portrait
 ];
 
-// Topic-keyword routing so each article gets a hero that visually matches the title.
+// Topic-keyword routing — maps each article topic to one of 12 hero themes
+// rotated across slots 1-40. Each theme key has 3-4 slot indexes (0-based).
+//   1/13/25/37 = dawn         | 2/14/26/38 = family
+//   3/15/27/39 = career       | 4/16/28/40 = school
+//   5/17/29     = running     | 6/18/30     = mentor
+//   7/19/31     = circle      | 8/20/32     = journal
+//   9/21/33     = workshop    | 10/22/34    = couple
+//   11/23/35    = paperwork   | 12/24/36    = boots
 const TOPIC_ROUTES = [
-  { match: /(family|spouse|marriage|kids|children|partner|relationship)/i, indexes: [4, 5, 6, 20, 21, 22] },
-  { match: /(career|job|resume|interview|hire|work|leadership|civilian (?:work|job))/i, indexes: [8, 9, 10, 11, 23, 24, 25] },
-  { match: /(gi bill|school|college|certificate|degree|education|study|tuition)/i, indexes: [12, 13, 14, 15] },
-  { match: /(va |health|sleep|fitness|gym|run|move|body|nutrition|therapy|ptsd|trauma|moral injury|crisis)/i, indexes: [16, 17, 18, 19] },
-  { match: /(faith|meaning|purpose|spiritual|grief|loss)/i, indexes: [26, 27, 28, 29, 30] },
-  { match: /(money|finance|budget|disability|benefit|claim|paperwork)/i, indexes: [36, 37, 10, 11] },
-  { match: /(identity|first year|civilian life|coming home|transition|culture shock)/i, indexes: [0, 1, 2, 3, 38, 39] },
-  { match: /(mentor|community|tribe|veteran service|nonprofit|brotherhood|sisterhood)/i, indexes: [23, 24, 25] },
-  { match: /(outdoor|hike|hunt|fish|adventure|garden|workshop|craft|build)/i, indexes: [29, 30, 31, 32, 33, 34, 35] },
+  { match: /(family|spouse|marriage|kids|children|partner|relationship|marriage|love)/i, indexes: [1, 13, 25, 37, 9, 21, 33] },
+  { match: /(career|job|resume|interview|hire|work|leadership|salary|civilian (?:work|job))/i, indexes: [2, 14, 26, 38] },
+  { match: /(gi bill|school|college|certificate|degree|education|study|tuition|class|campus)/i, indexes: [3, 15, 27, 39] },
+  { match: /(sleep|fitness|gym|run|move|body|nutrition|workout|exercise|morning routine)/i, indexes: [4, 16, 28] },
+  { match: /(mentor|coach|guide|advice from)/i, indexes: [5, 17, 29] },
+  { match: /(community|tribe|veteran service|nonprofit|brotherhood|sisterhood|peer|support group)/i, indexes: [6, 18, 30] },
+  { match: /(faith|meaning|purpose|spiritual|grief|loss|reflection|journal|writing|story|identity)/i, indexes: [7, 19, 31, 0, 12, 24, 36] },
+  { match: /(workshop|craft|build|woodwork|garden|repair|hands|trade|skilled)/i, indexes: [8, 20, 32] },
+  { match: /(outdoor|hike|trail|nature|forest|mountain|adventure|fishing|hunting)/i, indexes: [0, 12, 24, 36] },
+  { match: /(va |health|therapy|ptsd|trauma|moral injury|crisis|mental health|counsel)/i, indexes: [10, 22, 34, 11, 23, 35] },
+  { match: /(money|finance|budget|disability|benefit|claim|paperwork|appeal|denial)/i, indexes: [10, 22, 34] },
+  { match: /(first year|civilian life|coming home|transition|culture shock|coming back|day one|reintegration|new chapter|starting over|boots)/i, indexes: [11, 23, 35, 0, 12, 24, 36] },
 ];
 
 function pickByTopic(topic = '') {
@@ -87,16 +97,9 @@ function pickByTopic(topic = '') {
   return Math.floor(Math.random() * HERO_LIBRARY.length);
 }
 
-function bunnyUrlForIndex(idx, opts = {}) {
-  const w = opts.width || 1800;
-  const q = opts.quality || 78;
-  // If Bunny is configured, mirror to the pull zone; otherwise return the
-  // Unsplash CDN URL with size+quality params.
-  if (BUNNY_API_KEY && !BUNNY_API_KEY.startsWith('PLACEHOLDER')) {
-    return `${BUNNY_PULL_ZONE}/library/lib-${String(idx + 1).padStart(2, '0')}.webp`;
-  }
-  const base = HERO_LIBRARY[idx];
-  return `${base}?auto=format&fit=crop&w=${w}&q=${q}`;
+function bunnyUrlForIndex(idx, _opts = {}) {
+  // Always serve from Bunny pull zone. Unsplash is never hotlinked at runtime.
+  return `${BUNNY_PULL_ZONE}/library/lib-${String(idx + 1).padStart(2, '0')}.webp`;
 }
 
 /**

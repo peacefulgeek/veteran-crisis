@@ -17,7 +17,7 @@ export default function About() {
       </section>
       <article className="max-w-[720px] mx-auto px-5 md:px-0 py-20 article-body">
         <p>
-          The Veteran Shift exists because the transition from service to civilian
+          Veteran Crisis exists because the transition from service to civilian
           life is one of the most under-supported life passages in the country.
           The military gives you a complete identity for years. Civilian life
           does not have a replacement ready. People walk out the door with their

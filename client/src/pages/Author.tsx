@@ -26,7 +26,7 @@ export default function Author() {
         <p>
           The Oracle Lover writes about identity, transition, mental health,
           and the practical work of becoming yourself again on the other side
-          of major life passages. The Veteran Shift is the home for
+          of major life passages. Veteran Crisis is the home for
           military-to-civilian writing. Other writing on broader themes lives
           at <a href="https://theoraclelover.com" target="_blank" rel="noopener">theoraclelover.com</a>.
         </p>

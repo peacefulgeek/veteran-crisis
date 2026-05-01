@@ -200,6 +200,30 @@ export function registerSiteRoutes(app) {
     }
   });
 
+  // ── supplements / TCM / herbs catalog (208 verified ASINs, tag spankyspinola-20)
+  app.get('/api/supplements', async (_req, res) => {
+    try {
+      const m = await import('./supplements-catalog.mjs');
+      res.set('Cache-Control', 'public, max-age=600').json({
+        supplements: m.SUPPLEMENTS,
+        categories: m.SUPPLEMENT_CATEGORIES,
+        count: m.SUPPLEMENT_COUNT,
+      });
+    } catch (e) {
+      res.status(500).json({ error: 'supplements-failed' });
+    }
+  });
+
+  // ── assessments (nurturing, non-clinical self-checks for veterans)
+  app.get('/api/assessments', async (_req, res) => {
+    try {
+      const m = await import('./assessments.mjs');
+      res.set('Cache-Control', 'public, max-age=600').json({ assessments: m.ASSESSMENTS });
+    } catch (e) {
+      res.status(500).json({ error: 'assessments-failed' });
+    }
+  });
+
   // ── contact form (in-DB log via cron_runs as a simple bin)
   app.post('/api/contact', async (req, res) => {
     const { name, email, message } = req.body || {};

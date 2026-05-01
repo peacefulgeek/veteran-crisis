@@ -12,7 +12,7 @@ export default function Privacy() {
 
         <h2>What we collect</h2>
         <p>
-          The Veteran Shift collects standard server logs (IP address, user
+          Veteran Crisis collects standard server logs (IP address, user
           agent, page requested, timestamp) for security and analytics. We do
           not sell your data. We do not run third-party advertising trackers.
         </p>
