@@ -99,3 +99,10 @@
 - [x] Confirm 500 articles seeded, 1800+ words, gates passing, distribution healthy (30 across 21 days, max 2/day)
 - [x] Push to peacefulgeek/veteran-crisis (HTTPS+PAT, repo created via API)
 - [x] Emit §22 audit + §23 report + push hashtag
+
+## Round 3: Author Byline Blurb
+- [x] Add 2–3 sentence TheOracleLover.com byline blurb to every article body (4 rotated variants)
+- [x] Update template generator so future articles include it automatically
+- [x] Backfill all 500 existing articles in DB (500/500)
+- [x] Verify sample article renders the blurb, vitest 11/11 passes, gate 500/500 passes
+- [x] Push to peacefulgeek/veteran-crisis main, save checkpoint

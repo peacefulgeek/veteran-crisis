@@ -294,8 +294,18 @@ export function generateTemplateArticle(ctx) {
   // Author bio mid-article (after section 4 - per per-site scope: 4th or 5th section)
   const sectionsArr = sectionsHtml.split('<h2>').filter(Boolean);
   const midIdx = Math.min(4, sectionsArr.length - 1);
-  const bioCard = `<aside class="bio-card-mid" data-bio-mid="true">
-<p><strong>${SITE.author}</strong> writes about veteran transition, identity, and the practical work of becoming yourself again on the other side of service. The pieces here come from years of working with veterans through the first year out, the family work, and the slow rebuild of a civilian rhythm.</p>
+  // Mid-article author note: every single article gets a 2–3 sentence
+  // TheOracleLover.com byline, with a direct link, sitting after the 4th
+  // section. This is the EEAT author signal Google looks for and the trust
+  // anchor that converts veterans who land here cold.
+  const oracleBlurbs = [
+    `<strong><a href="${SITE.authorUrl}" target="_blank" rel="noopener">${SITE.author}</a></strong> writes the long-form work behind this site at <a href="${SITE.authorUrl}" target="_blank" rel="noopener">theoraclelover.com</a>, a quiet, fiercely honest body of writing about identity, devotion, and the slow work of becoming yourself again. Veterans, spouses, and the people who love them have been finding their way through her pages for years. If anything in this article opened something in you, that is where the deeper conversation continues.`,
+    `This piece is part of a larger conversation <strong><a href="${SITE.authorUrl}" target="_blank" rel="noopener">${SITE.author}</a></strong> has been holding for years at <a href="${SITE.authorUrl}" target="_blank" rel="noopener">theoraclelover.com</a>. Her work sits at the intersection of devotion, identity, and the long return home, the exact territory most veterans walk after the uniform comes off. If this site is the practical map, theoraclelover.com is the inner one.`,
+    `<strong><a href="${SITE.authorUrl}" target="_blank" rel="noopener">${SITE.author}</a></strong> is the writer behind <a href="${SITE.authorUrl}" target="_blank" rel="noopener">theoraclelover.com</a>, where she has been mapping the inner work of transition, devotion, and self-recovery for the better part of a decade. Veteran Crisis is her plainspoken sister project for the people who served and the people who love them. The two sites together are the full picture: the inner shift and the outer one.`,
+    `If this article landed somewhere tender, that is on purpose. <strong><a href="${SITE.authorUrl}" target="_blank" rel="noopener">${SITE.author}</a></strong> writes the deeper companion work at <a href="${SITE.authorUrl}" target="_blank" rel="noopener">theoraclelover.com</a>. Essays on devotion, identity, and how a person actually rebuilds a life from the inside out. Read a few pieces there alongside the practical work here. They are written for each other.`,
+  ];
+  const bioCard = `<aside class="bio-card-mid" data-bio-mid="true" data-eeat="author-blurb">
+<p>${oracleBlurbs[Math.floor(rng() * oracleBlurbs.length)]}</p>
 </aside>`;
   sectionsArr.splice(midIdx + 1, 0, bioCard.replace(/^/g, '') + '\n');
   const sectionsWithBio = sectionsArr.map((s, i) => (i === midIdx + 1 ? s : '<h2>' + s)).join('');
