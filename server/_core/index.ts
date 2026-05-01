@@ -8,6 +8,10 @@ import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+// @ts-ignore — sibling .mjs ESM module
+import { wwwToApexRedirect, registerSiteRoutes } from "../lib/site-routes.mjs";
+// @ts-ignore — sibling .mjs ESM module
+import { startCrons } from "../lib/cron-jobs.mjs";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -31,9 +35,13 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
-  // Configure body parser with larger size limit for file uploads
+  // Master scope §2 + §6: WWW → apex 301 MUST be the very first middleware.
+  app.use(wwwToApexRedirect());
+  // Body parsers
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // Public site routes (health, sitemap, robots, llms, /api/articles, /api/cron-status)
+  registerSiteRoutes(app);
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   // tRPC API
@@ -60,6 +68,9 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    // 5 crons (top-up, publish, sitemap-ping, asin-health, health-beacon)
+    // Per user directive: env var defaults to enabled; only explicit "false" disables.
+    try { startCrons({ enabled: process.env.AUTO_GEN_ENABLED !== "false" }); } catch (e) { console.error("[cron] start failed:", e); }
   });
 }
 

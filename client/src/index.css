@@ -43,39 +43,41 @@
 }
 
 :root {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-600);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --radius: 0.65rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.235 0.015 65);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.235 0.015 65);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.235 0.015 65);
-  --secondary: oklch(0.98 0.001 286.375);
-  --secondary-foreground: oklch(0.4 0.015 65);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.141 0.005 285.823);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.623 0.214 259.815);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.235 0.015 65);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.623 0.214 259.815);
+  /* The Veteran Shift palette */
+  /* bg #F6F4EE warm off-white | text #1A2018 dark olive-black | accent #6B7A3C warm olive | sage #E8EDE0 */
+  --radius: 0.5rem;
+  --background: oklch(0.962 0.014 90);
+  --foreground: oklch(0.215 0.013 130);
+  --card: oklch(0.985 0.01 90);
+  --card-foreground: oklch(0.215 0.013 130);
+  --popover: oklch(0.985 0.01 90);
+  --popover-foreground: oklch(0.215 0.013 130);
+  --primary: oklch(0.522 0.094 121);
+  --primary-foreground: oklch(0.98 0.012 90);
+  --secondary: oklch(0.92 0.025 115);
+  --secondary-foreground: oklch(0.32 0.04 130);
+  --muted: oklch(0.93 0.018 95);
+  --muted-foreground: oklch(0.46 0.025 120);
+  --accent: oklch(0.92 0.04 120);
+  --accent-foreground: oklch(0.215 0.013 130);
+  --destructive: oklch(0.55 0.18 30);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.86 0.02 100);
+  --input: oklch(0.88 0.018 100);
+  --ring: oklch(0.55 0.09 121);
+  --chart-1: oklch(0.522 0.094 121);
+  --chart-2: oklch(0.66 0.08 90);
+  --chart-3: oklch(0.42 0.06 130);
+  --chart-4: oklch(0.78 0.06 95);
+  --chart-5: oklch(0.34 0.05 130);
+  --sidebar: oklch(0.93 0.022 100);
+  --sidebar-foreground: oklch(0.215 0.013 130);
+  --sidebar-primary: oklch(0.522 0.094 121);
+  --sidebar-primary-foreground: oklch(0.98 0.012 90);
+  --sidebar-accent: oklch(0.92 0.04 120);
+  --sidebar-accent-foreground: oklch(0.215 0.013 130);
+  --sidebar-border: oklch(0.86 0.02 100);
+  --sidebar-ring: oklch(0.55 0.09 121);
 }
 
 .dark {
@@ -119,6 +121,19 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Source Sans 3', 'Source Sans Pro', 'Inter', system-ui, sans-serif;
+    font-size: 18px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  h1, h2, h3, h4, .font-serif {
+    font-family: 'Merriweather', 'Lora', Georgia, serif;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .font-ui {
+    font-family: 'Inter', system-ui, sans-serif;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -174,4 +189,66 @@
       max-width: 1280px; /* Standard content width */
     }
   }
+}
+
+/* ─── The Veteran Shift article typography ─── */
+.article-body {
+  font-family: "Source Sans Pro", system-ui, sans-serif;
+  font-size: 18px;
+  line-height: 1.75;
+  color: #1A2018;
+}
+.article-body p { margin: 0 0 1.4em; }
+.article-body h2 {
+  font-family: "Merriweather", Georgia, serif;
+  font-weight: 400;
+  font-size: 1.85rem;
+  line-height: 1.25;
+  color: #1A2018;
+  margin: 2.4em 0 1em;
+  padding-top: 1.2em;
+  border-top: 1px solid rgba(26,32,24,0.10);
+}
+.article-body h3 {
+  font-family: "Merriweather", Georgia, serif;
+  font-size: 1.4rem;
+  margin: 2em 0 0.6em;
+}
+.article-body a { color: #6B7A3C; text-decoration: underline; text-underline-offset: 3px; }
+.article-body a:hover { color: #1A2018; }
+.article-body strong { color: #1A2018; }
+.article-body ul, .article-body ol { margin: 0 0 1.4em 1.4em; }
+.article-body li { margin-bottom: .55em; }
+.article-body blockquote {
+  border-left: 3px solid #6B7A3C;
+  padding: .25em 1.2em;
+  margin: 1.6em 0;
+  color: rgba(26,32,24,0.85);
+  font-style: italic;
+}
+.article-body .bio-card-mid,
+.article-body aside.bio-card-mid {
+  background: #E8EDE0;
+  border: 1px solid rgba(26,32,24,0.08);
+  border-radius: 12px;
+  padding: 1.6em 1.8em;
+  margin: 2.4em 0;
+}
+.article-body .product-card,
+.article-body aside.product-card {
+  display: block;
+  background: #EFEBDF;
+  border: 1px solid rgba(26,32,24,0.08);
+  border-radius: 12px;
+  padding: 1.4em 1.6em;
+  margin: 2em 0;
+  font-size: 0.96em;
+}
+.article-body .self-ref { color: rgba(26,32,24,0.7); font-style: italic; }
+.prose-tldr p { margin: 0; }
+.prose-tldr strong { color: #6B7A3C; letter-spacing: 0.04em; text-transform: uppercase; font-size: 0.85em; }
+
+@media (max-width: 768px) {
+  .article-body { font-size: 17px; }
+  .article-body h2 { font-size: 1.6rem; }
 }
