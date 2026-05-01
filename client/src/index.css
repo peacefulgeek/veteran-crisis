@@ -252,3 +252,86 @@
   .article-body { font-size: 17px; }
   .article-body h2 { font-size: 1.6rem; }
 }
+
+
+/* ─── Author Hub (/author/the-oracle-lover) ─── */
+.author-hero {
+  padding: 4.5rem 1.5rem 2rem;
+  background: linear-gradient(180deg, #F6F4EE 0%, #FAF8F2 100%);
+  border-bottom: 1px solid #E8EDE0;
+}
+.author-hero-grid {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(220px, 380px) 1fr;
+  gap: 3rem;
+  align-items: center;
+}
+@media (max-width: 760px) {
+  .author-hero-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+}
+.author-portrait img {
+  width: 100%;
+  height: auto;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(26, 32, 24, 0.12);
+  display: block;
+}
+.author-headline .eyebrow {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #6B7A3C;
+  margin-bottom: 0.75rem;
+}
+.author-headline h1 {
+  font-family: 'Merriweather', Georgia, serif;
+  font-size: clamp(2.4rem, 5vw, 3.6rem);
+  line-height: 1.05;
+  margin: 0 0 1rem 0;
+  color: #1A2018;
+  font-weight: 900;
+}
+.author-headline .lede {
+  font-family: 'Source Sans Pro', system-ui, sans-serif;
+  font-size: 1.18rem;
+  line-height: 1.6;
+  color: #2B3328;
+  margin: 0 0 1.25rem 0;
+  max-width: 38em;
+}
+.author-headline .lede a { color: #6B7A3C; text-decoration: underline; text-underline-offset: 3px; }
+.author-meta {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.92rem;
+  color: #4A5240;
+}
+.author-meta li { position: relative; padding-left: 1rem; }
+.author-meta li::before {
+  content: ""; position: absolute; left: 0; top: 0.55em;
+  width: 6px; height: 6px; border-radius: 50%; background: #6B7A3C;
+}
+
+.author-bio {
+  padding: 3rem 1.5rem 5rem;
+  background: #F6F4EE;
+}
+.author-bio .article-body { max-width: 720px; margin: 0 auto; }
+.author-bio .author-signoff {
+  font-family: 'Merriweather', Georgia, serif;
+  font-style: italic;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #E8EDE0;
+}
+.author-bio .author-signoff .muted {
+  font-style: normal; font-size: 0.92rem; color: #6B7A3C;
+}

@@ -9,7 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 // @ts-ignore — sibling .mjs ESM module
-import { wwwToApexRedirect, registerSiteRoutes } from "../lib/site-routes.mjs";
+import { wwwToApexRedirect, registerSiteRoutes, articleMetaInjector } from "../lib/site-routes.mjs";
 // @ts-ignore — sibling .mjs ESM module
 import { startCrons } from "../lib/cron-jobs.mjs";
 
@@ -37,6 +37,9 @@ async function startServer() {
   const server = createServer(app);
   // Master scope §2 + §6: WWW → apex 301 MUST be the very first middleware.
   app.use(wwwToApexRedirect());
+  // Per-article SSR meta injector (crawlers only). Mounted immediately after
+  // WWW redirect so it runs BEFORE Vite/static catch-all swallows /articles/*.
+  app.use(articleMetaInjector());
   // Body parsers
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -52,7 +55,6 @@ async function startServer() {
       createContext,
     })
   );
-  // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {

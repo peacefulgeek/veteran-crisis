@@ -17,6 +17,7 @@ export type ArticleFull = ArticleSummary & {
   body: string;
   lastModifiedAt: string | null;
   wordCount: number | null;
+  ogImage?: string | null;
 };
 
 export function useArticles(limit = 60) {

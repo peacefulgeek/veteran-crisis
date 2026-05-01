@@ -2,6 +2,92 @@ import { getConn } from './articles-db.mjs';
 import { SITE } from './site-config.mjs';
 
 /**
+ * Per-article SSR meta injector. When a crawler hits /articles/:slug, we
+ * rewrite the title / description / canonical / og:image / twitter:image so
+ * Facebook, LinkedIn, X, and Slack render a real share card with the
+ * Bunny-hosted 1200x630 OG image we built. SPA hydration still runs after.
+ *
+ * Mounted BEFORE the Vite/static catch-all but AFTER the WWW redirect.
+ */
+export function articleMetaInjector() {
+  return async function (req, res, next) {
+    const m = req.path.match(/^\/articles\/([a-z0-9-]+)\/?$/);
+    if (!m) return next();
+    // In dev mode, Vite middlewares wrap everything; the SSR injector is a no-op there.
+    // Crawlers in prod path get the meta card; SPA users get full hydration regardless.
+    if (process.env.NODE_ENV !== 'production') return next();
+    // Only intercept HTML navigations
+    const accept = req.headers.accept || '';
+    if (!accept.includes('text/html')) return next();
+    try {
+      const conn = await getConn();
+      const [rows] = await conn.query(
+        "SELECT slug, title, excerpt, ogImage, heroUrl, publishedAt FROM articles WHERE slug=? AND status='published' LIMIT 1",
+        [m[1]]
+      );
+      const row = rows[0];
+      if (!row) return next();
+      // Stash on req so the SPA bootstrap (Vite middleware) can read it; we
+      // also set Link rel="canonical" header for crawlers that don't run JS.
+      const ogUrl = row.ogImage || row.heroUrl;
+      const canonical = `${SITE.baseUrl}/articles/${row.slug}`;
+      res.setHeader('Link', `<${canonical}>; rel="canonical", <${ogUrl}>; rel="image_src"`);
+      // Inject meta via response interception. We let next() run, then in 'finish'
+      // we have nothing to do; the cleanest path is to ship a small HTML shim
+      // for crawler UAs only.
+      const ua = (req.headers['user-agent'] || '').toLowerCase();
+      const isCrawler = /bot|crawler|spider|facebookexternalhit|twitterbot|linkedinbot|slackbot|whatsapp|discord|telegram/.test(ua);
+      if (isCrawler) {
+        const safe = (s) => String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        const title = safe(row.title) + ' | ' + SITE.name;
+        const desc = safe(row.excerpt || `${row.title}. Practical, plainspoken guidance for veterans navigating the transition home.`);
+        const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>${title}</title>
+<meta name="description" content="${desc}">
+<link rel="canonical" href="${canonical}">
+<meta property="og:type" content="article">
+<meta property="og:title" content="${title}">
+<meta property="og:description" content="${desc}">
+<meta property="og:image" content="${ogUrl}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="${canonical}">
+<meta property="og:site_name" content="${SITE.name}">
+<meta property="article:published_time" content="${(row.publishedAt instanceof Date ? row.publishedAt : new Date(row.publishedAt)).toISOString()}">
+<meta property="article:author" content="${SITE.author}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${title}">
+<meta name="twitter:description" content="${desc}">
+<meta name="twitter:image" content="${ogUrl}">
+<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1">
+<script type="application/ld+json">${JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'Article',
+          headline: row.title,
+          image: ogUrl,
+          datePublished: (row.publishedAt instanceof Date ? row.publishedAt : new Date(row.publishedAt)).toISOString(),
+          author: { '@type': 'Person', name: SITE.author, url: `${SITE.baseUrl}/author/the-oracle-lover` },
+          publisher: { '@type': 'Organization', name: SITE.name, url: SITE.baseUrl },
+          mainEntityOfPage: canonical,
+        })}</script>
+<meta http-equiv="refresh" content="0;url=${canonical}">
+</head>
+<body><p>Loading <a href="${canonical}">${safe(row.title)}</a>…</p></body>
+</html>`;
+        return res.set('Cache-Control', 'public, max-age=300').type('text/html').send(html);
+      }
+      return next();
+    } catch (e) {
+      console.error('[articleMetaInjector]', e.message);
+      return next();
+    }
+  };
+}
+
+/**
  * Master scope §2 + §6: the WWW->apex 301 must be the FIRST middleware. We export
  * it separately so server/_core/index.ts can mount it before anything else.
  */
@@ -172,7 +258,7 @@ export function registerSiteRoutes(app) {
     const conn = await getConn();
     try {
       const [rows] = await conn.query(
-        `SELECT slug, title, metaDescription, body, category, tags, heroUrl, heroAlt, author, publishedAt, lastModifiedAt, readingTime, wordCount
+        `SELECT slug, title, metaDescription, body, category, tags, heroUrl, heroAlt, ogImage, author, publishedAt, lastModifiedAt, readingTime, wordCount
            FROM articles WHERE status='published' AND slug=?`,
         [req.params.slug],
       );

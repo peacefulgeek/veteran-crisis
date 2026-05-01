@@ -117,3 +117,21 @@ describe("master scope §6: robots.txt allow-lists all four AI bots", () => {
     expect(body).toContain("Sitemap: https://veterancrisis.com/sitemap.xml");
   });
 });
+
+import { readFileSync } from "node:fs";
+describe("master scope §17: per-article OG meta", () => {
+  it("single article API SELECT includes ogImage column", () => {
+    const src = readFileSync("server/lib/site-routes.mjs", "utf-8");
+    // Find the /api/articles/:slug handler and verify the SELECT lists ogImage.
+    const m = src.match(/\/api\/articles\/:slug[\s\S]*?SELECT[\s\S]*?FROM articles/);
+    expect(m).not.toBeNull();
+    expect(m![0]).toContain("ogImage");
+  });
+  it("ArticleDetail.tsx writes og:image meta to document.head", () => {
+    const src = readFileSync("client/src/pages/ArticleDetail.tsx", "utf-8");
+    expect(src).toContain('og:image');
+    expect(src).toContain('twitter:image');
+    expect(src).toContain('application/ld+json');
+    expect(src).toContain("'@type': 'Article'");
+  });
+});

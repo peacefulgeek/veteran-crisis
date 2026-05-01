@@ -295,17 +295,36 @@ export function generateTemplateArticle(ctx) {
   const sectionsArr = sectionsHtml.split('<h2>').filter(Boolean);
   const midIdx = Math.min(4, sectionsArr.length - 1);
   // Mid-article author note: every single article gets a 2–3 sentence
-  // TheOracleLover.com byline, with a direct link, sitting after the 4th
-  // section. This is the EEAT author signal Google looks for and the trust
-  // anchor that converts veterans who land here cold.
-  const oracleBlurbs = [
-    `<strong><a href="${SITE.authorUrl}" target="_blank" rel="noopener">${SITE.author}</a></strong> writes the long-form work behind this site at <a href="${SITE.authorUrl}" target="_blank" rel="noopener">theoraclelover.com</a>, a quiet, fiercely honest body of writing about identity, devotion, and the slow work of becoming yourself again. Veterans, spouses, and the people who love them have been finding their way through her pages for years. If anything in this article opened something in you, that is where the deeper conversation continues.`,
-    `This piece is part of a larger conversation <strong><a href="${SITE.authorUrl}" target="_blank" rel="noopener">${SITE.author}</a></strong> has been holding for years at <a href="${SITE.authorUrl}" target="_blank" rel="noopener">theoraclelover.com</a>. Her work sits at the intersection of devotion, identity, and the long return home, the exact territory most veterans walk after the uniform comes off. If this site is the practical map, theoraclelover.com is the inner one.`,
-    `<strong><a href="${SITE.authorUrl}" target="_blank" rel="noopener">${SITE.author}</a></strong> is the writer behind <a href="${SITE.authorUrl}" target="_blank" rel="noopener">theoraclelover.com</a>, where she has been mapping the inner work of transition, devotion, and self-recovery for the better part of a decade. Veteran Crisis is her plainspoken sister project for the people who served and the people who love them. The two sites together are the full picture: the inner shift and the outer one.`,
-    `If this article landed somewhere tender, that is on purpose. <strong><a href="${SITE.authorUrl}" target="_blank" rel="noopener">${SITE.author}</a></strong> writes the deeper companion work at <a href="${SITE.authorUrl}" target="_blank" rel="noopener">theoraclelover.com</a>. Essays on devotion, identity, and how a person actually rebuilds a life from the inside out. Read a few pieces there alongside the practical work here. They are written for each other.`,
+  // TheOracleLover.com byline with TWO direct links, one wrapping the author
+  // name and one wrapping a varied editorial anchor. The varied anchor cycles
+  // through 12 natural phrases so the link profile reads as organic, not
+  // boilerplate. EEAT author signal + healthy backlink profile in one block.
+  const VARIED_ANCHORS = [
+    'theoraclelover.com',
+    'her long-form essays',
+    'her main body of work',
+    'the inner companion to this site',
+    'her writing on devotion and identity',
+    'her decade of essays at theoraclelover.com',
+    'the deeper conversation',
+    'her essays on the long return home',
+    'her writing on devotion',
+    'the sister site to this one',
+    'her notebook on identity and recovery',
+    'her writing at theoraclelover.com',
   ];
+  const nameAnchor = `<strong><a href="${SITE.authorUrl}" target="_blank" rel="noopener">${SITE.author}</a></strong>`;
+  const variedText = VARIED_ANCHORS[Math.floor(rng() * VARIED_ANCHORS.length)];
+  const variedAnchor = `<a href="${SITE.authorUrl}" target="_blank" rel="noopener">${variedText}</a>`;
+  const blurbTemplates = [
+    () => `${nameAnchor} writes the long-form work behind this site at ${variedAnchor}, a quiet, fiercely honest body of writing about identity, devotion, and the slow work of becoming yourself again. Veterans, spouses, and the people who love them have been finding their way through her pages for years. If anything in this article opened something in you, that is where the deeper conversation continues.`,
+    () => `This piece is part of a larger conversation ${nameAnchor} has been holding for years at ${variedAnchor}. Her work sits at the intersection of devotion, identity, and the long return home, the exact territory most veterans walk after the uniform comes off. If this site is the practical map, the inner one is hers.`,
+    () => `${nameAnchor} is the writer behind ${variedAnchor}, where she has been mapping the inner work of transition, devotion, and self-recovery for the better part of a decade. Veteran Crisis is her plainspoken sister project for the people who served and the people who love them. The two sites together are the full picture: the inner shift and the outer one.`,
+    () => `If this article landed somewhere tender, that is on purpose. ${nameAnchor} writes the deeper companion work at ${variedAnchor}. Essays on devotion, identity, and how a person actually rebuilds a life from the inside out. Read a few pieces there alongside the practical work here. They are written for each other.`,
+  ];
+  const blurb = blurbTemplates[Math.floor(rng() * blurbTemplates.length)]();
   const bioCard = `<aside class="bio-card-mid" data-bio-mid="true" data-eeat="author-blurb">
-<p>${oracleBlurbs[Math.floor(rng() * oracleBlurbs.length)]}</p>
+<p>${blurb}</p>
 </aside>`;
   sectionsArr.splice(midIdx + 1, 0, bioCard.replace(/^/g, '') + '\n');
   const sectionsWithBio = sectionsArr.map((s, i) => (i === midIdx + 1 ? s : '<h2>' + s)).join('');

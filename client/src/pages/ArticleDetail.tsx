@@ -32,6 +32,80 @@ export default function ArticleDetail() {
     });
   }, [a?.body]);
 
+  // ── Per-article meta + JSON-LD injection (works in dev + prod for crawlers that run JS)
+  useEffect(() => {
+    if (!a) return;
+    const SITE = 'https://veterancrisis.com';
+    const url = `${SITE}/articles/${a.slug}`;
+    const ogImg = (a as any).ogImage || a.heroUrl || `${SITE}/og-default.webp`;
+    const desc = (a.metaDescription || a.title || '').slice(0, 240);
+    const orig = document.title;
+    document.title = `${a.title} — Veteran Crisis`;
+
+    const upsertMeta = (selector: string, attrs: Record<string, string>) => {
+      let el = document.head.querySelector(selector) as HTMLMetaElement | null;
+      if (!el) {
+        el = document.createElement('meta');
+        Object.entries(attrs).forEach(([k, v]) => el!.setAttribute(k, v));
+        document.head.appendChild(el);
+      } else {
+        Object.entries(attrs).forEach(([k, v]) => el!.setAttribute(k, v));
+      }
+      return el;
+    };
+    const upsertLink = (rel: string, href: string) => {
+      let el = document.head.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null;
+      if (!el) {
+        el = document.createElement('link');
+        el.setAttribute('rel', rel);
+        document.head.appendChild(el);
+      }
+      el.setAttribute('href', href);
+      return el;
+    };
+
+    upsertMeta('meta[name="description"]', { name: 'description', content: desc });
+    upsertMeta('meta[property="og:title"]', { property: 'og:title', content: a.title });
+    upsertMeta('meta[property="og:description"]', { property: 'og:description', content: desc });
+    upsertMeta('meta[property="og:type"]', { property: 'og:type', content: 'article' });
+    upsertMeta('meta[property="og:url"]', { property: 'og:url', content: url });
+    upsertMeta('meta[property="og:image"]', { property: 'og:image', content: ogImg });
+    upsertMeta('meta[property="og:site_name"]', { property: 'og:site_name', content: 'Veteran Crisis' });
+    upsertMeta('meta[name="twitter:card"]', { name: 'twitter:card', content: 'summary_large_image' });
+    upsertMeta('meta[name="twitter:title"]', { name: 'twitter:title', content: a.title });
+    upsertMeta('meta[name="twitter:description"]', { name: 'twitter:description', content: desc });
+    upsertMeta('meta[name="twitter:image"]', { name: 'twitter:image', content: ogImg });
+    upsertLink('canonical', url);
+
+    // JSON-LD Article schema
+    const ldId = 'jsonld-article';
+    let ld = document.getElementById(ldId) as HTMLScriptElement | null;
+    if (!ld) {
+      ld = document.createElement('script');
+      ld.id = ldId;
+      ld.type = 'application/ld+json';
+      document.head.appendChild(ld);
+    }
+    ld.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      headline: a.title,
+      description: desc,
+      image: [ogImg],
+      datePublished: a.publishedAt,
+      dateModified: a.lastModifiedAt || a.publishedAt,
+      author: { '@type': 'Person', name: a.author || 'The Oracle Lover', url: `${SITE}/author/the-oracle-lover` },
+      publisher: { '@type': 'Organization', name: 'Veteran Crisis', url: SITE },
+      mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+    });
+
+    return () => {
+      document.title = orig;
+      const stale = document.getElementById(ldId);
+      if (stale) stale.remove();
+    };
+  }, [a?.slug, a?.title, a?.metaDescription, (a as any)?.ogImage, a?.heroUrl, a?.publishedAt, a?.lastModifiedAt, a?.author]);
+
   // Parallax + dot nav scroll watch
   useEffect(() => {
     const onScroll = () => {

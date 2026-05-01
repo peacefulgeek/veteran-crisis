@@ -106,3 +106,13 @@
 - [x] Backfill all 500 existing articles in DB (500/500)
 - [x] Verify sample article renders the blurb, vitest 11/11 passes, gate 500/500 passes
 - [x] Push to peacefulgeek/veteran-crisis main, save checkpoint
+
+## Round 4: EEAT Author Hub + Anchor Variation + OG Images
+- [ ] Generate Oracle Lover portrait, upload to Bunny CDN
+- [ ] Build /author/the-oracle-lover with 6-paragraph long-form bio + portrait + EEAT JSON-LD
+- [ ] Write 10–12 natural theoraclelover.com anchor-text variants
+- [ ] Rewrite all 500 byline asides distributing the anchor variants (no two consecutive identical)
+- [ ] Generate 30 OG share images (1200×630 WebP) for published articles
+- [ ] Upload OG images to Bunny CDN
+- [ ] Add ogImage column to articles, populate, wire og:image + twitter:image meta on article detail
+- [ ] Verify, run vitest, commit + push to peacefulgeek/veteran-crisis, save checkpoint

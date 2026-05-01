@@ -1,0 +1,11 @@
+import 'dotenv/config';
+import mysql from 'mysql2/promise';
+const c = await mysql.createConnection(process.env.DATABASE_URL);
+const [n] = await c.query("SHOW COLUMNS FROM articles LIKE 'ogImage'");
+console.log('ogImage column exists:', n.length > 0);
+const [t] = await c.query("SELECT COUNT(*) n FROM articles WHERE status='published'");
+const [m] = await c.query("SELECT COUNT(*) n FROM articles WHERE status='published' AND ogImage IS NOT NULL AND ogImage <> ''");
+const [s] = await c.query("SELECT slug, ogImage FROM articles WHERE status='published' AND ogImage IS NOT NULL LIMIT 3");
+console.log(`published: ${t[0].n}, with og: ${m[0].n}`);
+for (const r of s) console.log(' ', r.slug, '->', r.ogImage);
+await c.end();
