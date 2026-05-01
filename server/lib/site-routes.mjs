@@ -162,7 +162,11 @@ export function registerSiteRoutes(app) {
       const urls = [
         ...staticPaths.map(p => `<url><loc>${SITE.baseUrl}${p}</loc><lastmod>${today}</lastmod><changefreq>daily</changefreq><priority>${p === '/' ? '1.0' : '0.8'}</priority></url>`),
         ...rows.map(r => {
-          const d = (r.publishedAt || r.lastModifiedAt || new Date()).toISOString().slice(0, 10);
+          // Prefer the newer of lastModifiedAt / publishedAt so Google sees real freshness.
+          const lm = r.lastModifiedAt ? new Date(r.lastModifiedAt).getTime() : 0;
+          const pb = r.publishedAt ? new Date(r.publishedAt).getTime() : 0;
+          const stamp = Math.max(lm, pb) || Date.now();
+          const d = new Date(stamp).toISOString().slice(0, 10);
           return `<url><loc>${SITE.baseUrl}/articles/${r.slug}</loc><lastmod>${d}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`;
         }),
       ].join('\n');
@@ -190,7 +194,14 @@ export function registerSiteRoutes(app) {
         .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
       const cdata = (s) => `<![CDATA[${String(s || '').replace(/]]>/g, ']]]]><![CDATA[>')}]]>`;
       const rfc822 = (d) => new Date(d || Date.now()).toUTCString();
-      const buildDate = rfc822(rows[0]?.publishedAt || Date.now());
+      // lastBuildDate = max(lastModifiedAt, publishedAt) across the 30 rows so feed readers
+      // pick up edits, not just publishes.
+      const newest = rows.reduce((acc, r) => {
+        const lm = r.lastModifiedAt ? new Date(r.lastModifiedAt).getTime() : 0;
+        const pb = r.publishedAt ? new Date(r.publishedAt).getTime() : 0;
+        return Math.max(acc, lm, pb);
+      }, 0);
+      const buildDate = rfc822(newest || Date.now());
       const items = rows.map(r => {
         const url = `${SITE.baseUrl}/articles/${r.slug}`;
         const enclosure = r.heroUrl
@@ -202,6 +213,7 @@ export function registerSiteRoutes(app) {
           `<link>${escape(url)}</link>`,
           `<guid isPermaLink="true">${escape(url)}</guid>`,
           `<pubDate>${rfc822(r.publishedAt)}</pubDate>`,
+          `<atom:updated>${new Date(r.lastModifiedAt || r.publishedAt || Date.now()).toISOString()}</atom:updated>`,
           `<dc:creator>${escape(r.author || SITE.author)}</dc:creator>`,
           r.category ? `<category>${escape(r.category)}</category>` : '',
           `<description>${cdata(r.metaDescription || '')}</description>`,

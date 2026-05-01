@@ -107,6 +107,24 @@
 - [x] Verify sample article renders the blurb, vitest 11/11 passes, gate 500/500 passes
 - [x] Push to peacefulgeek/veteran-crisis main, save checkpoint
 
+## Round 8: 500 unique hero images per article (DALL·E 3)
+- [ ] Store OPENAI_API_KEY as secret (not in code/git)
+- [ ] Pull all 500 articles (id, slug, title, category, tags) into a list
+- [ ] For each article: craft prompt (warm-light editorial, no text, no clichés) → DALL·E 3 standard 1024×1024 → download → WebP q88 → upload to Bunny `articles/{id}.webp` → update articles.heroUrl
+- [ ] Resume-safe: skip rows whose heroUrl already points to /articles/{id}.webp
+- [ ] Spot-check 10 generated images via the live site
+- [ ] Run vitest 16/16, push to peacefulgeek/veteran-crisis, save checkpoint
+
+## Round 7: Auto-bumping dateModified for freshness signals
+- [ ] Add /api/articles/:slug returns lastModifiedAt (already in SELECT) — verify
+- [ ] DB trigger or write-path: on UPDATE of published articles' body/title, bump lastModifiedAt = NOW()
+- [ ] Backfill any rows where lastModifiedAt < publishedAt to publishedAt
+- [ ] ArticleDetail JSON-LD: emit dateModified from a.lastModifiedAt (currently falls back to publishedAt)
+- [ ] sitemap.xml: emit <lastmod> using max(lastModifiedAt, publishedAt)
+- [ ] /feed.xml: emit <lastBuildDate> = max(lastModifiedAt) across all rows
+- [ ] Vitest: dateModified surfaces in client JSON-LD; sitemap+feed pick the newer timestamp
+- [ ] Push + checkpoint
+
 ## Round 6: RSS Feed (/feed.xml)
 - [x] Add /feed.xml endpoint to site-routes.mjs (RSS 2.0 with content:encoded namespace)
 - [x] Pull latest 30 published articles ordered by publishedAt desc
