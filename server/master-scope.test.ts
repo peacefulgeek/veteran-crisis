@@ -247,3 +247,64 @@ describe("§25 — Railway deploy artifacts", () => {
     expect(idx).toMatch(/process\.env\.PORT \? preferredPort/);
   });
 });
+
+describe("§26 — de-Manus + Bunny JSON storage", () => {
+  const siteRoutes = readFileSync("server/lib/site-routes.mjs", "utf-8");
+  const coreIndex = readFileSync("server/_core/index.ts", "utf-8");
+  const viteCfg = readFileSync("vite.config.ts", "utf-8");
+  const openaiClient = readFileSync("server/lib/openai-client.mjs", "utf-8");
+  const bunnyLib = readFileSync("server/lib/bunny.mjs", "utf-8");
+  const cronJobs = readFileSync("server/lib/cron-jobs.mjs", "utf-8");
+  const deployDoc = readFileSync("DEPLOY-RAILWAY.md", "utf-8");
+
+  it("/sitemap.xml redirects to Bunny CDN", () => {
+    expect(siteRoutes).toMatch(/'\/sitemap\.xml'[^]*?bunnyPullZone[^]*?feeds\/sitemap\.xml/);
+  });
+  it("/feed.xml redirects to Bunny CDN", () => {
+    expect(siteRoutes).toMatch(/'\/feed\.xml'[^]*?bunnyPullZone[^]*?feeds\/feed\.xml/);
+  });
+  it("/api/articles redirects to Bunny index.json", () => {
+    expect(siteRoutes).toMatch(/'\/api\/articles'[^]*?bunnyPullZone[^]*?articles\/index\.json/);
+  });
+  it("/api/articles/:slug redirects to Bunny per-slug JSON", () => {
+    expect(siteRoutes).toMatch(/'\/api\/articles\/:slug'[^]*?bunnyPullZone[^]*?articles\/.+\.json/);
+  });
+  it("bunny.mjs exports putJsonToBunny helper", () => {
+    expect(bunnyLib).toMatch(/export[^]*?putJsonToBunny/);
+  });
+  it("cron-jobs registers publish-to-bunny", () => {
+    expect(cronJobs).toMatch(/publish-to-bunny/);
+  });
+  it("server/_core/index.ts no longer registers OAuth or storageProxy", () => {
+    expect(coreIndex).not.toMatch(/registerOAuthRoutes\s*\(/);
+    expect(coreIndex).not.toMatch(/registerStorageProxy\s*\(/);
+  });
+  it("vite.config.ts no longer imports vite-plugin-manus-runtime", () => {
+    expect(viteCfg).not.toMatch(/from ['"]vite-plugin-manus-runtime['"]/);
+  });
+  it("vite.config.ts allows .up.railway.app + veterancrisis.com hosts", () => {
+    expect(viteCfg).toMatch(/up\.railway\.app/);
+    expect(viteCfg).toMatch(/veterancrisis\.com/);
+  });
+  it("openai-client.mjs no longer falls back to BUILT_IN_FORGE", () => {
+    expect(openaiClient).not.toMatch(/BUILT_IN_FORGE_API_KEY/);
+  });
+  it("DEPLOY-RAILWAY.md drops all Manus env vars from required list", () => {
+    expect(deployDoc).toMatch(/Removed entirely[^]*?BUILT_IN_FORGE/);
+    const tableSection = deployDoc.split("## 3.")[0];
+    expect(tableSection).not.toMatch(/\| `OAUTH_SERVER_URL` \| yes/);
+    expect(tableSection).not.toMatch(/\| `BUILT_IN_FORGE_API_KEY` \| yes/);
+  });
+});
+
+describe("§27 — ADMIN_KEY gates /api/cron-status", () => {
+  it("checks process.env.ADMIN_KEY before serving cron-status", () => {
+    const src = readFileSync("server/lib/site-routes.mjs", "utf-8");
+    // The gate must reside inside the cron-status handler and use the env var.
+    const handler = src.match(/'\/api\/cron-status'[\s\S]*?finally/);
+    expect(handler).not.toBeNull();
+    expect(handler![0]).toContain("process.env.ADMIN_KEY");
+    expect(handler![0]).toMatch(/x-admin-key|X-Admin-Key/i);
+    expect(handler![0]).toMatch(/401/);
+  });
+});

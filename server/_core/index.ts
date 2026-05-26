@@ -3,8 +3,8 @@ import express from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
-import { registerStorageProxy } from "./storageProxy";
+// Manus-specific OAuth + /manus-storage proxy removed: app now runs purely on GitHub + Railway + Bunny.
+// Auth (if needed in the future) will use a simple ADMIN_KEY env var; assets are served direct from Bunny CDN.
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -45,8 +45,6 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // Public site routes (health, sitemap, robots, llms, /api/articles, /api/cron-status)
   registerSiteRoutes(app);
-  registerStorageProxy(app);
-  registerOAuthRoutes(app);
   // tRPC API
   app.use(
     "/api/trpc",

@@ -4,7 +4,7 @@ This document is the complete, opinionated checklist for taking the project from
 
 ## 1. Architectural snapshot
 
-The application is a single Node.js process that does three jobs at once: it serves the React SPA built by Vite, exposes the public-facing site routes (`/health`, `/sitemap.xml`, `/robots.txt`, `/feed.xml`, `/api/articles`, `/api/articles/:slug`, `/manus-storage/*`, plus the per-article SSR meta injector for crawlers), and runs five internal cron jobs (top-up, publish, sitemap-ping, asin-health, health-beacon). Static assets are not stored on disk — they live on Bunny CDN at `https://veteran-crisis.b-cdn.net/articles/{id}.webp` — which is exactly what Railway needs because Railway's filesystem is ephemeral. The build emits a single `dist/index.js` plus a Vite-built `dist/public/` SPA, and `pnpm start` runs both via `node dist/index.js`.
+The stack is **GitHub → Railway → Bunny CDN**. Zero Manus dependencies remain. The application is a single Node.js process that serves the React SPA, redirects all public read endpoints (`/api/articles`, `/api/articles/:slug`, `/sitemap.xml`, `/feed.xml`) to Bunny CDN as 302s, and runs six internal cron jobs (top-up, publish, sitemap-ping, asin-health, health-beacon, **publish-to-bunny**). The new `publish-to-bunny` cron regenerates `articles/index.json`, `articles/{slug}.json`, `feeds/sitemap.xml`, and `feeds/feed.xml` to Bunny on a 6-hour cadence and immediately after every successful publish. All hero/OG/article-body content lives on Bunny CDN at `https://veteran-crisis.b-cdn.net/...` — which is exactly what Railway needs because Railway's filesystem is ephemeral. The build emits a single `dist/index.js` plus a Vite-built `dist/public/` SPA, and `pnpm start` runs both via `node dist/index.js`.
 
 ## 2. Required environment variables
 
@@ -13,22 +13,17 @@ Configure these in Railway's project Variables panel. Anything marked **required
 | Variable | Required | Purpose |
 |---|---|---|
 | `DATABASE_URL` | yes | TiDB/MySQL connection string. Format: `mysql://user:pass@host:port/db?ssl={"rejectUnauthorized":true}`. Use the same TiDB Cloud cluster as dev to keep the 500 articles. |
-| `JWT_SECRET` | yes | Cookie/session signing secret. Use any 32+ character random string. |
-| `OPENAI_API_KEY` | yes | OpenAI key. Used by the publish/top-up cron when generating new articles or hero images. Rotate the one previously pasted in chat. |
-| `OAUTH_SERVER_URL` | yes | `https://api.manus.im` (Manus OAuth backend). |
-| `VITE_APP_ID` | yes | Manus OAuth application ID. Same value as dev. |
-| `VITE_OAUTH_PORTAL_URL` | yes | Manus login portal URL (frontend). Same value as dev. |
-| `OWNER_OPEN_ID` | yes | Owner's Manus OpenID; used for `notifyOwner` calls. |
-| `OWNER_NAME` | yes | Display name for the owner. |
-| `BUILT_IN_FORGE_API_URL` | yes | Manus built-in API base URL. |
-| `BUILT_IN_FORGE_API_KEY` | yes | Bearer token for Manus built-in APIs (server-side). |
-| `VITE_FRONTEND_FORGE_API_KEY` | yes | Bearer token for Manus built-in APIs (frontend). |
-| `VITE_FRONTEND_FORGE_API_URL` | yes | Manus built-in APIs URL for frontend. |
+| `OPENAI_API_KEY` | yes | OpenAI key for the publish/top-up cron and article generation. **Rotate the one pasted in chat earlier.** |
+| `OPENAI_MODEL` | optional | Defaults to `gpt-4o-mini`. Override to `deepseek-chat`, `gpt-4o`, etc. |
+| `OPENAI_BASE_URL` | optional | Defaults to `https://api.openai.com/v1`. Override to `https://api.deepseek.com` if using DeepSeek. |
 | `VITE_APP_TITLE` | optional | Browser tab title. Defaults to "Veteran Crisis". |
 | `VITE_APP_LOGO` | optional | URL to the favicon/logo. |
 | `AUTO_GEN_ENABLED` | optional | Set to `false` to disable all crons. Defaults to enabled. |
+| `ADMIN_KEY` | optional | Optional shared secret. When set, `/api/cron-status` requires `X-Admin-Key: <value>` header or `?key=<value>` query. When unset, the endpoint is open. |
 | `NODE_ENV` | leave unset | Railway sets `NODE_ENV=production` automatically; the `start` script also sets it explicitly. |
 | `PORT` | leave unset | Railway injects this. The server now binds to it directly without scanning. |
+
+**Removed entirely:** `JWT_SECRET`, `OAUTH_SERVER_URL`, `VITE_APP_ID`, `VITE_OAUTH_PORTAL_URL`, `OWNER_OPEN_ID`, `OWNER_NAME`, `BUILT_IN_FORGE_API_URL`, `BUILT_IN_FORGE_API_KEY`, `VITE_FRONTEND_FORGE_API_KEY`, `VITE_FRONTEND_FORGE_API_URL`. The Manus OAuth flow, `/manus-storage` proxy, `vite-plugin-manus-runtime`, and the FORGE LLM helpers are all stripped from the codebase. Public site uses Express routes only; tRPC remains mounted at `/api/trpc` for any future internal admin endpoints.
 
 The Bunny CDN credentials (`bunnyStorageZone`, `bunnyApiKey`, `bunnyHostname`, `bunnyPullZone`) are still hardcoded in `server/lib/site-config.mjs` per master scope §9. If you want to externalize them later for security hygiene, move them to env vars and update the import sites in `server/lib/bunny.mjs` and `scripts/gen-500-heroes.mjs`.
 
@@ -44,7 +39,7 @@ Point `veterancrisis.com` (apex) to Railway by adding the domain in the project'
 
 ## 5. Cron behavior on Railway
 
-The five crons run inside the same web process (no separate worker dyno needed). Railway's web service does not sleep on the Hobby plan as long as it receives at least one request per ~10 minutes; the `health-beacon` cron pings `/health` internally every 5 minutes which is enough to keep the dyno warm. If you put the project on Pro and scale to zero, you'll need to either disable scale-to-zero for this service or move the publish cron to a Railway Cron service that hits `/api/cron-status` style endpoints externally. To disable all crons in a particular environment (for example a staging copy), set `AUTO_GEN_ENABLED=false`.
+The six crons run inside the same web process (no separate worker dyno needed). The new `publish-to-bunny` cron is the most important one for this architecture: every 6 hours, plus immediately after each successful `publish` run, it regenerates `articles/index.json`, every `articles/{slug}.json`, `feeds/sitemap.xml`, and `feeds/feed.xml`, and PUTs them to Bunny CDN. Railway's web service does not sleep on the Hobby plan as long as it receives at least one request per ~10 minutes; the `health-beacon` cron pings `/health` internally every 5 minutes which is enough to keep the dyno warm. If you put the project on Pro and scale to zero, you'll need to either disable scale-to-zero for this service or move the publish cron to a Railway Cron service that hits `/api/cron-status` style endpoints externally. To disable all crons in a particular environment (for example a staging copy), set `AUTO_GEN_ENABLED=false`.
 
 ## 6. The 100-article publishing cap
 
@@ -69,9 +64,11 @@ After the first deploy succeeds, run this checklist against the public URL (repl
 | Check | Expected |
 |---|---|
 | `curl -sI https://<host>/health` | `HTTP/2 200`, JSON `{ok:true}` |
-| `curl -s https://<host>/sitemap.xml \| head -20` | XML with 31+ `<url>` blocks (will grow as cron publishes) |
-| `curl -s https://<host>/feed.xml \| grep -c '<item>'` | 30 |
-| `curl -s https://<host>/api/articles \| jq 'length'` | 31 (current published count) |
+| `curl -sI https://<host>/sitemap.xml` | `HTTP/2 302` redirecting to `https://veteran-crisis.b-cdn.net/feeds/sitemap.xml` |
+| `curl -sI https://<host>/feed.xml` | `HTTP/2 302` redirecting to `https://veteran-crisis.b-cdn.net/feeds/feed.xml` |
+| `curl -sI https://<host>/api/articles` | `HTTP/2 302` redirecting to `https://veteran-crisis.b-cdn.net/articles/index.json` |
+| `curl -s https://veteran-crisis.b-cdn.net/feeds/feed.xml \| grep -c '<item>'` | 30 |
+| `curl -s https://veteran-crisis.b-cdn.net/articles/index.json \| jq '.articles \| length'` | 31 (current published count) |
 | Browse `https://<host>/articles/the-identity-crisis-nobody-warned-you-about-after-discharge` | Renders fully with hero image |
 | `curl -A 'facebookexternalhit/1.1' -s https://<host>/articles/the-identity-crisis-nobody-warned-you-about-after-discharge \| grep og:image` | Returns the per-article Bunny CDN OG image URL |
 

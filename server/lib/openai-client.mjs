@@ -1,19 +1,15 @@
 import OpenAI from 'openai';
 
-// Master scope §11: writing engine = DeepSeek V4-Pro through the OpenAI client.
-// Falls back to the platform-injected forge LLM only if neither key is present.
-const apiKey =
-  process.env.OPENAI_API_KEY ||
-  process.env.DEEPSEEK_API_KEY ||
-  process.env.BUILT_IN_FORGE_API_KEY ||
-  '';
+// Writing engine: pure OpenAI/DeepSeek client. No Manus FORGE fallback.
+// Default endpoint is OpenAI; set OPENAI_BASE_URL=https://api.deepseek.com to use DeepSeek.
+const apiKey = process.env.OPENAI_API_KEY || process.env.DEEPSEEK_API_KEY || '';
 const baseURL =
   process.env.OPENAI_BASE_URL ||
-  (process.env.OPENAI_API_KEY || process.env.DEEPSEEK_API_KEY
+  (process.env.DEEPSEEK_API_KEY && !process.env.OPENAI_API_KEY
     ? 'https://api.deepseek.com'
-    : process.env.BUILT_IN_FORGE_API_URL || 'https://api.deepseek.com');
+    : 'https://api.openai.com/v1');
 
-export const MODEL = process.env.OPENAI_MODEL || 'deepseek-v4-pro';
+export const MODEL = process.env.OPENAI_MODEL || (baseURL.includes('deepseek') ? 'deepseek-chat' : 'gpt-4o-mini');
 
 export const openai = new OpenAI({ apiKey, baseURL });
 

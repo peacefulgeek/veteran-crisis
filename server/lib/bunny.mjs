@@ -141,3 +141,48 @@ export function libraryUrl(index) {
 
 export function heroForIndex(i, opts) { return bunnyUrlForIndex(i % HERO_LIBRARY.length, opts); }
 export const HERO_COUNT = HERO_LIBRARY.length;
+
+// ── Generic Bunny upload/download helpers (used for JSON storage and XML
+//    feeds that move off MySQL/local disk per "GitHub + Railway + Bunny only"
+//    architecture). All paths are RELATIVE to the storage zone root.
+//    Examples:
+//      await putToBunny('articles/index.json', JSON.stringify(list), 'application/json');
+//      await putToBunny('feeds/sitemap.xml', xml, 'application/xml');
+//      const json = await getJsonFromBunny('articles/index.json');
+
+export async function putToBunny(relPath, body, contentType = 'application/octet-stream') {
+  if (!BUNNY_API_KEY || BUNNY_API_KEY.startsWith('PLACEHOLDER')) {
+    throw new Error('[bunny] BUNNY_API_KEY missing or placeholder');
+  }
+  const cleanPath = String(relPath).replace(/^\/+/, '');
+  const uploadUrl = `https://${BUNNY_HOSTNAME}/${BUNNY_STORAGE_ZONE}/${cleanPath}`;
+  const res = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { AccessKey: BUNNY_API_KEY, 'Content-Type': contentType },
+    body,
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => '');
+    throw new Error(`[bunny] PUT ${cleanPath} → ${res.status} ${txt}`);
+  }
+  return `${BUNNY_PULL_ZONE}/${cleanPath}`;
+}
+
+export async function putJsonToBunny(relPath, obj) {
+  return putToBunny(relPath, JSON.stringify(obj), 'application/json; charset=utf-8');
+}
+
+export async function getFromBunny(relPath) {
+  const cleanPath = String(relPath).replace(/^\/+/, '');
+  const url = `${BUNNY_PULL_ZONE}/${cleanPath}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`[bunny] GET ${cleanPath} → ${res.status}`);
+  return res;
+}
+
+export async function getJsonFromBunny(relPath) {
+  const res = await getFromBunny(relPath);
+  if (!res) return null;
+  return res.json();
+}

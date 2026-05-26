@@ -107,6 +107,20 @@
 - [x] Verify sample article renders the blurb, vitest 11/11 passes, gate 500/500 passes
 - [x] Push to peacefulgeek/veteran-crisis main, save checkpoint
 
+## Round 10: De-Manus + Bunny JSON storage (GitHub + Railway + Bunny only)
+- [x] Audited Manus surface: OAuth, /manus-storage, vite-plugin-manus-runtime, FORGE LLM, allowedHosts
+- [x] Added putToBunny/getFromBunny/putJsonToBunny helpers in server/lib/bunny.mjs
+- [x] articles/index.json on Bunny (31 published rows); /api/articles 302→ there
+- [x] articles/{slug}.json on Bunny (31 files); /api/articles/:slug 302→ there
+- [x] feeds/sitemap.xml + feeds/feed.xml on Bunny; routes 302→ there
+- [x] Removed registerOAuthRoutes from server/_core/index.ts
+- [x] Removed registerStorageProxy / /manus-storage proxy
+- [x] Removed vite-plugin-manus-runtime import + usage from vite.config.ts
+- [x] openai-client.mjs no longer falls back to BUILT_IN_FORGE; pure OPENAI_API_KEY
+- [x] notifyOwner unused in app source; no stub needed
+- [x] DEPLOY-RAILWAY.md rewritten: 10 Manus env vars dropped, leaner table, redirect-checks in smoke test
+- [x] Build clean, vitest 32/32 pass, push, checkpoint
+
 ## Round 9: Cap at 100 published + Railway deploy prep
 - [x] Audit current article statuses (31 published, 469 queued — already under 100)
 - [x] Cap published at ≤100: hard cap added in publish cron (refuses to promote at >=100)
