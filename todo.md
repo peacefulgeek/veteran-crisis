@@ -107,6 +107,15 @@
 - [x] Verify sample article renders the blurb, vitest 11/11 passes, gate 500/500 passes
 - [x] Push to peacefulgeek/veteran-crisis main, save checkpoint
 
+## Round 9: Cap at 100 published + Railway deploy prep
+- [x] Audit current article statuses (31 published, 469 queued — already under 100)
+- [x] Cap published at ≤100: hard cap added in publish cron (refuses to promote at >=100)
+- [x] Verify gating end-to-end: queued slug returns 404, 0 leakage in sitemap/feed/articles list
+- [x] Audit project for Railway: $PORT binding fixed, no fs writes, /health endpoint exists, deps OK
+- [x] Add railway.json + Procfile + .nvmrc + engines.node>=22
+- [x] Add DEPLOY-RAILWAY.md with full env-var checklist + 10-step deploy guide
+- [x] Run vitest 21/21 pass, push, save checkpoint
+
 ## Round 8: 500 unique hero images per article (DALL·E 3)
 - [x] Store OPENAI_API_KEY as secret (not in code/git)
 - [x] Pull all 500 articles (id, slug, title, category, tags) into a list

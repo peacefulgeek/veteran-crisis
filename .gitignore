@@ -127,3 +127,4 @@ client/public/__manus__/version.json
 *.ico
 *.svg
 !client/public/favicon.svg
+.project-config.json

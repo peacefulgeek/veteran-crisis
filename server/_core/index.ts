@@ -62,13 +62,17 @@ async function startServer() {
   }
 
   const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
+  // On hosted platforms ($PORT injected by Railway/Render/Heroku) we MUST bind exactly that
+  // port. Only fall back to scanning when running locally without $PORT set.
+  const port =
+    process.env.PORT ? preferredPort : await findAvailablePort(preferredPort);
 
   if (port !== preferredPort) {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
-  server.listen(port, () => {
+  // Bind to 0.0.0.0 so Railway's HTTP health probe and ingress can reach the process.
+  server.listen(port, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${port}/`);
     // 5 crons (top-up, publish, sitemap-ping, asin-health, health-beacon)
     // Per user directive: env var defaults to enabled; only explicit "false" disables.

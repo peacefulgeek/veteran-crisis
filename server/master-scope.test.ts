@@ -214,3 +214,36 @@ describe("master scope §16: /feed.xml RSS endpoint", () => {
     expect(src).toMatch(/LIMIT 30/);
   });
 });
+
+describe("§24 — 100-article publishing cap", () => {
+  it("publish cron enforces a hard cap of 100", () => {
+    const cron = readFileSync("server/lib/cron-jobs.mjs", "utf-8");
+    expect(cron).toMatch(/SELECT COUNT\(\*\) AS n FROM articles WHERE status='published'/);
+    expect(cron).toMatch(/>=\s*100\)\s*return logRun\(conn,\s*'publish-one',\s*'skipped',\s*`cap=100/);
+  });
+});
+
+describe("§25 — Railway deploy artifacts", () => {
+  it("railway.json points start at pnpm start and health at /health", () => {
+    const r = JSON.parse(readFileSync("railway.json", "utf-8"));
+    expect(r.deploy.startCommand).toBe("pnpm start");
+    expect(r.deploy.healthcheckPath).toBe("/health");
+    expect(r.build.buildCommand).toMatch(/pnpm install.*pnpm build/);
+  });
+
+  it("Procfile declares the web process", () => {
+    const p = readFileSync("Procfile", "utf-8");
+    expect(p.trim()).toBe("web: pnpm start");
+  });
+
+  it("package.json pins Node engines to >=22", () => {
+    const pkg = JSON.parse(readFileSync("package.json", "utf-8"));
+    expect(pkg.engines?.node).toMatch(/22/);
+  });
+
+  it("server binds 0.0.0.0 and uses $PORT directly when set", () => {
+    const idx = readFileSync("server/_core/index.ts", "utf-8");
+    expect(idx).toMatch(/server\.listen\(port,\s*"0\.0\.0\.0"/);
+    expect(idx).toMatch(/process\.env\.PORT \? preferredPort/);
+  });
+});
