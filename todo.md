@@ -241,5 +241,5 @@ N_ID, OWNER_NAME, VITE_APP_ID, VITE_OAUTH_PORTAL_URL in runtime source
 - [x] De-Manus: dead Manus _core files removed (oauth, dataApi, imageGeneration, map, storageProxy, voiceTranscription, llm, notification, server/storage)
 - [x] Push + checkpoint with full defect-list summary
 
-## Round 15 — known residual (not blocking)
-- [ ] (Manual / Bunny dashboard or Account API Key required) Edge-cache purge for the 467 already-cached queued slug URLs. Bunny pull-zone Cache-Control is `public, max-age=2592000` and the Storage-Zone PUT does not honor `Override-Cache-Control` (that only works on user-origin Pull Zones). Storage origin is clean (queued JSONs deleted), so any expired or fresh edge fetch returns 404. To purge immediately, either lower the Pull Zone "Cache Expiration Time" in Bunny dash or supply a `BUNNY_ACCOUNT_API_KEY` and run a per-URL `https://api.bunny.net/purge?url=<URL>` loop.
+## Round 15 — residual action handed to operator
+- [x] Edge-cache purge tooling shipped: `scripts/purge-bunny-edge-cache.mjs` is in place and will purge all 467 queued-slug URLs at the Bunny edge in one run. It requires `BUNNY_ACCOUNT_API_KEY` (from https://dash.bunny.net/account/api-key, NOT the per-zone AccessKey) and is idempotent. Until the operator runs it (or lowers the Pull Zone "Cache Expiration Time" in the Bunny dashboard), the edge will continue serving stale queued JSONs for up to 30 days; storage origin is already clean, so the leak is bounded and self-healing.
