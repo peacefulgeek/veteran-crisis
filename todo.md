@@ -188,3 +188,9 @@
 - [x] JWT_SECRET documented as no-op in DEPLOY-RAILWAY §3 (harmless to set, no code reads it)
 - [x] FAL_KEY explicitly excluded per §1A; vitest §32 enforces no references in 4 runtime files
 - [x] 54/54 vitest pass, build clean, push, checkpoint
+
+## Round 13: Remove 100-article publishing cap
+- [x] Removed `cap=100` block from publish-one cron in server/lib/cron-jobs.mjs
+- [x] Updated §24 vitest to assert cap is gone (no `cap=100`, no `>= 100` check)
+- [x] Verified Bunny CDN: public index=32 published, admin all-index=500 (byStatus pub=32, queued=468), 5 random per-slug 200 OK 13–14 KB each
+- [x] 54/54 vitest pass, pushed a2f2b0f to peacefulgeek/veteran-crisis main
