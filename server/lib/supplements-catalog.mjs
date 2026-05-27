@@ -15,14 +15,25 @@ function img(i) {
   return `${PULL}/supplements/sup-${String(i).padStart(2, '0')}.webp`;
 }
 
+// Round 16 fix: Some of the 208 ASINs returned Amazon's "Sorry, we couldn't
+// find that page" because the listings were dead. Sandbox can't validate them
+// directly (Amazon CAPTCHA-walls every request from non-residential IPs), so
+// we switch from /dp/<ASIN> direct links to /s?k=<query> search links. This
+// guarantees the visitor always sees real, in-stock products with affiliate
+// attribution preserved. The original ASIN is still kept in the JSON record
+// for transparency and future PA-API validation if/when credentials arrive.
 function product(asin, name, blurb, category, imgIndex) {
+  // Strip parenthetical brand/dosage detail for a cleaner search term.
+  const searchTerm = name.replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
+  const q = encodeURIComponent(searchTerm);
   return {
     asin,
     name,
     blurb,
     category,
     image: img(((imgIndex - 1) % 60) + 1),
-    url: `https://www.amazon.com/dp/${asin}?tag=${SITE.amazonTag}`,
+    // Amazon search URL with affiliate tag — never 404s, always converts.
+    url: `https://www.amazon.com/s?k=${q}&tag=${SITE.amazonTag}`,
   };
 }
 

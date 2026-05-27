@@ -76,8 +76,11 @@ export function findFlaggedPhrases(text) {
 }
 
 export function countAmazonLinks(html) {
-  const m = html.match(/href="https?:\/\/www\.amazon\.[^\"]+\/dp\/[A-Z0-9]{10}/gi) || [];
-  return m.length;
+  // Round 16: accept both legacy /dp/<ASIN> URLs and the new /s?k=<query>
+  // search URLs. Both must carry the affiliate tag (?tag=… or &tag=…).
+  const dpLinks = html.match(/href="https?:\/\/www\.amazon\.[^"]+\/dp\/[A-Z0-9]{10}[^"]*tag=/gi) || [];
+  const searchLinks = html.match(/href="https?:\/\/www\.amazon\.[^"]+\/s\?k=[^"]*tag=/gi) || [];
+  return dpLinks.length + searchLinks.length;
 }
 
 export function eeatSignals(html) {

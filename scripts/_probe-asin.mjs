@@ -1,0 +1,13 @@
+import { createConnection } from 'mysql2/promise';
+import 'dotenv/config';
+const c = await createConnection(process.env.DATABASE_URL);
+const [cols] = await c.query(`SHOW COLUMNS FROM asin_cache`);
+console.log('=== asin_cache columns ===');
+for (const r of cols) console.log(`  ${r.Field.padEnd(28)} ${r.Type}`);
+const [count] = await c.query(`SELECT COUNT(*) total, SUM(CASE WHEN status='ok' THEN 1 ELSE 0 END) ok_count, SUM(CASE WHEN status='dead' THEN 1 ELSE 0 END) dead_count FROM asin_cache`);
+console.log('\n=== asin_cache totals ==='); console.table(count);
+const [byStatus] = await c.query(`SELECT status, COUNT(*) cnt FROM asin_cache GROUP BY status`);
+console.log('\n=== status distribution ==='); console.table(byStatus);
+const [recent] = await c.query(`SELECT asin, status, lastChecked, message FROM asin_cache ORDER BY lastChecked DESC LIMIT 10`);
+console.log('\n=== recent ==='); console.table(recent);
+await c.end();

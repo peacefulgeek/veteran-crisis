@@ -274,16 +274,80 @@ export function registerSiteRoutes(app) {
     }
   });
 
-  // ── public JSON: list of published articles → redirect to Bunny CDN
-  app.get('/api/articles', (_req, res) => {
-    res.set('Cache-Control', 'public, max-age=120');
-    res.redirect(302, `${SITE.bunnyPullZone}/articles/index.json`);
+  // Tiny in-memory TTL cache for the publish-time of each slug, so we can
+  // append ?v=<unix-ms> to Bunny redirects and cache-bust automatically when an
+  // article body changes. Default 30s TTL keeps the DB hit negligible.
+  const _slugVersionCache = new Map(); // slug -> { v: number, exp: number }
+  async function _slugVersion(slug) {
+    const now = Date.now();
+    const hit = _slugVersionCache.get(slug);
+    if (hit && hit.exp > now) return hit.v;
+    const conn = await getConn();
+    try {
+      const [rows] = await conn.query(
+        `SELECT UNIX_TIMESTAMP(lastModifiedAt) * 1000 AS v
+         FROM articles WHERE slug = ? AND status = 'published' LIMIT 1`,
+        [slug],
+      );
+      const v = rows[0]?.v ? Number(rows[0].v) : null;
+      _slugVersionCache.set(slug, { v, exp: now + 30_000 });
+      return v;
+    } finally {
+      await conn.end();
+    }
+  }
+  // Same for the index: refreshed on every retemplate run.
+  let _indexVersionCache = { v: null, exp: 0 };
+  async function _indexVersion() {
+    const now = Date.now();
+    if (_indexVersionCache.exp > now) return _indexVersionCache.v;
+    const conn = await getConn();
+    try {
+      const [rows] = await conn.query(
+        `SELECT UNIX_TIMESTAMP(MAX(lastModifiedAt)) * 1000 AS v
+         FROM articles WHERE status = 'published'`,
+      );
+      const v = rows[0]?.v ? Number(rows[0].v) : null;
+      _indexVersionCache = { v, exp: now + 30_000 };
+      return v;
+    } finally {
+      await conn.end();
+    }
+  }
+
+  // ── public JSON: list of published articles → redirect to Bunny CDN with
+  // ‘?v=<latest-publish-ms>’ cache-buster so updates surface immediately.
+  app.get('/api/articles', async (_req, res) => {
+    try {
+      const v = await _indexVersion();
+      const buster = v ? `?v=${v}` : '';
+      res.set('Cache-Control', 'public, max-age=120');
+      res.redirect(302, `${SITE.bunnyPullZone}/articles/index.json${buster}`);
+    } catch {
+      // On DB hiccup, fall back to plain redirect rather than 500-ing the page.
+      res.set('Cache-Control', 'public, max-age=120');
+      res.redirect(302, `${SITE.bunnyPullZone}/articles/index.json`);
+    }
   });
 
-  // ── public JSON: single article → redirect to Bunny CDN per-slug file. Legacy DB handler kept as _legacyArticleApi for SSR meta injection + tests.
-  app.get('/api/articles/:slug', (req, res) => {
-    res.set('Cache-Control', 'public, max-age=300');
-    res.redirect(302, `${SITE.bunnyPullZone}/articles/${encodeURIComponent(req.params.slug)}.json`);
+  // ── public JSON: single article → redirect to Bunny CDN with
+  // ‘?v=<lastModifiedAt-ms>’. Static, deterministic, cache-busts on edit.
+  app.get('/api/articles/:slug', async (req, res) => {
+    try {
+      const v = await _slugVersion(req.params.slug);
+      if (!v) return res.status(404).json({ error: 'not-found' });
+      res.set('Cache-Control', 'public, max-age=300');
+      res.redirect(
+        302,
+        `${SITE.bunnyPullZone}/articles/${encodeURIComponent(req.params.slug)}.json?v=${v}`,
+      );
+    } catch {
+      res.set('Cache-Control', 'public, max-age=300');
+      res.redirect(
+        302,
+        `${SITE.bunnyPullZone}/articles/${encodeURIComponent(req.params.slug)}.json`,
+      );
+    }
   });
 
   // Legacy DB-driven single-article handler (no longer mounted; used internally by SSR injector + tests)

@@ -264,21 +264,81 @@ export function generateTemplateArticle(ctx) {
   // We have ~14 sections in the bank — picking 10 keeps variety while guaranteeing length.
   const sections = pickN(SECTION_BANK, 10, rng);
 
-  // TL;DR
+  // TL;DR — picks one of 12 different opener variants per slug so the
+  // first paragraph reads differently in every article. All variants are warm,
+  // encouraging, and grounded in the same voice (no boilerplate).
+  const TLDR_VARIANTS = [
+    () => `<p><strong>The short version.</strong> What follows is a real, working playbook for ${ctx.topic.toLowerCase()}, written for the veteran who is tired of being told to "just give it time." Time alone does not fix this. The right small moves do.</p>
+<p>You will leave this page with one thing to do this week, two veterans-friendly tools you did not know existed, and a way to talk about the work that does not sound like a self-help book.</p>
+<p>Three things to remember. You are not behind. You are not broken. You are between two lives, and a bridge is being built one plank at a time.</p>`,
+    () => `<p><strong>The honest version.</strong> ${ctx.topic} is one of those quiet challenges nobody hands you a checklist for. The military teaches you to handle terrain, weather, and threat. It does not teach you the slow indoor work of becoming a civilian again. So we will write that part down here.</p>
+<p>This piece is built for veterans who want clarity without condescension. We move from the real cost, to what works, to what to do this week. No fluff, no toxic positivity, no pretending it is simpler than it is.</p>
+<p>Read it once now. Bookmark it. Come back when you need a specific section.</p>`,
+    () => `<p><strong>What this is.</strong> A practical, veteran-to-veteran walkthrough of ${ctx.topic.toLowerCase()}. Plain English. No jargon. No motivational poster lines. The kind of conversation you would have with a senior NCO who actually finished the transition and is willing to tell you what they got wrong on the way through.</p>
+<p>This article is organized so you can read it straight through, or jump to the section that hurts the most today. Either way, you should walk out of here with one specific move you can make in the next seven days.</p>
+<p>Take what helps. Leave what does not. Come back when you need it.</p>`,
+    () => `<p><strong>Start here.</strong> If ${ctx.topic.toLowerCase()} has been quietly running you for a while, you are in the right place. Most of the men and women we hear from did not know there was a name for what they were going through, let alone a way through it. There is, and it does not require fixing yourself, only seeing yourself clearly.</p>
+<p>This guide is the long version of a conversation we have had with hundreds of veterans. It is direct, kind, and built for adults who can handle the truth without a pep talk wrapped around it.</p>
+<p>One step at a time. That is how anyone gets out of any terrain.</p>`,
+    () => `<p><strong>The plain truth.</strong> ${ctx.topic} is not a personal failing and it is not a discipline problem. It is a predictable part of the long arc of leaving the service, and the people who walk it well are the ones who treat it as a real project with real moves, not a mood to wait out.</p>
+<p>What follows is what those moves look like, in the order most veterans need them. The early sections cost nothing but attention. The later sections need a little time, a little money, and one honest conversation. None of them require you to be anyone other than who you are right now.</p>
+<p>You are closer than you think. Keep reading.</p>`,
+    () => `<p><strong>Real talk first.</strong> Nobody handed you a roadmap for ${ctx.topic.toLowerCase()}. The exit briefings cover paperwork. They do not cover identity, money, relationships, sleep, purpose, or the hundred small ways civilian life feels off-tempo for the first year or two.</p>
+<p>This is the missing briefing. We wrote it because we got tired of watching good veterans white-knuckle a transition that has a known shape and a known set of solutions, just because nobody put it in one place.</p>
+<p>It is in one place now. Welcome.</p>`,
+    () => `<p><strong>The short version.</strong> The work of ${ctx.topic.toLowerCase()} is real, it is doable, and there is a community of veterans on the other side of it who are quietly thriving. The reason their stories do not get told is the same reason yours feels invisible: people who actually figure it out tend to get quiet about how hard the middle was.</p>
+<p>This article pulls back the curtain on the middle. What it actually feels like, what actually works, and the resources that earn their place in the toolkit.</p>
+<p>You are allowed to take this slowly. You are also allowed to start today.</p>`,
+    () => `<p><strong>You are not the problem.</strong> ${ctx.topic} is the problem, and it has a known shape. The shape is uncomfortable but it is not unfamiliar to the people who have walked it before you. That is the hidden gift of this terrain: it has been mapped.</p>
+<p>What you will not find on this page is shame, blame, or fake urgency. What you will find is a sequence of practical steps, the resources that back them up, and a tone that respects the fact that you have already done hard things in your life.</p>
+<p>So let us do this one together, on the terms that fit how you live now.</p>`,
+    () => `<p><strong>Why this exists.</strong> Most articles about ${ctx.topic.toLowerCase()} are written by people who have never lived it, for an audience the writer has never met. This one is different. It is written for the veteran who reads carefully, asks good questions, and would like the answers without the lecture.</p>
+<p>We will move through it in the order that has helped the people we have heard from over the years. Pace yourself. Take notes if you take notes. Skip what does not apply.</p>
+<p>You can put this work down anytime and come back. The pages will wait.</p>`,
+    () => `<p><strong>The first thing to know.</strong> ${ctx.topic} is solvable. Not in a Hollywood way, not in a single weekend, not by buying anything. It is solvable the way most things in adult life are solvable: with attention, a few real tools, and a quiet willingness to keep showing up after the easy days end.</p>
+<p>What follows is the working version of how veterans get through this part. The order matters less than the doing. Start where it is easy and let the harder parts get easier as you build evidence that you can move at all.</p>
+<p>The tide is turning even when it does not feel like it.</p>`,
+    () => `<p><strong>For the record.</strong> ${ctx.topic} is one of the most common sources of quiet frustration we hear about, and one of the most fixable. The catch is that the fix does not look like the fix. It looks like a series of small, undramatic moves that compound over a season or two until one morning you realize the weight has shifted.</p>
+<p>This article is the field manual for those moves. Some of them are obvious. Some of them are not. None of them require you to become a different person to do them.</p>
+<p>You are already the kind of person who can do this. The proof is that you are reading.</p>`,
+    () => `<p><strong>What we know.</strong> ${ctx.topic} sits at the intersection of practical logistics and inner work, which is exactly why most resources mishandle it. They either treat it as a paperwork issue or as a feelings issue. It is both, and the people who do well treat it as both, in that order.</p>
+<p>You will see that pattern in this article. Practical first, because the logistics are real and they shape your week. Inner second, because that is where the long change happens once the floor is steady underneath you.</p>
+<p>Steady the floor first. The rest gets easier from there.</p>`,
+  ];
+  const tldrInner = TLDR_VARIANTS[Math.floor(rng() * TLDR_VARIANTS.length)]();
   const tldr = `<section data-tldr="ai-overview" aria-label="In short">
-<p><strong>The short version.</strong> ${ctx.topic} is not a job problem. It is an identity problem with practical consequences. Treat it like terrain, not like a personal failing.</p>
-<p>Three moves get you most of the way through. Build a daily structure. Find one veteran and one civilian you trust. Use the VA, the GI Bill, and the Veterans Crisis Line (988, then press 1) as tools, not as last resorts.</p>
-<p>This article walks through what works, what fails, and how to start this week without overhauling your whole life.</p>
+${tldrInner}
 </section>`;
 
   // Opener
   const opener = OPENERS[ctx.openerType][Math.floor(rng() * OPENERS[ctx.openerType].length)];
 
-  // Internal links woven in
+  // Internal links woven in. Intro is now picked from a 10-variant bank so two
+  // adjacent articles do not read with the exact same second paragraph.
   const i0 = internals[0], i1 = internals[1], i2 = internals[2];
-  const intro = `<p>${opener}</p>
-<p>${SELF_REF_OPENERS[Math.floor(rng() * SELF_REF_OPENERS.length)]}the same patterns show up: the identity gap, the job translation, the VA paperwork, the relationships that need fresh attention. We have written about <a href="/articles/${i0.slug}">${i0.title}</a> in detail, and a lot of what follows builds on that.</p>
-<p>Look, here\u2019s the thing. You did not get briefed on this part. You were briefed on tactics, weapons systems, supply chain, command structure. Nobody sat you down and said, "When you take the uniform off, here is who you become." So we are going to do that work here, in plain language. And if you want the deeper take from a related angle, our piece on <a href="/articles/${i1.slug}">${i1.title}</a> is the natural next stop.</p>`;
+  const INTRO_VARIANTS = [
+    () => `<p>The pattern under ${ctx.topic.toLowerCase()} is the one most veterans miss while they are inside it. The day-to-day frustrations are real, but the deeper layer is identity, sequencing, and a few quiet skills civilian life never names. Our work on <a href="/articles/${i0.slug}">${i0.title}</a> sits next to this one and is worth opening in another tab.</p>
+<p>Most of the briefings you sat through in uniform covered tactics and procedure. None of them covered who you become when the structure is gone. That is the gap this article tries to fill in plain language. For a related angle that picks up where this one leaves off, our piece on <a href="/articles/${i1.slug}">${i1.title}</a> is the natural companion.</p>`,
+    () => `<p>Here is what nobody tells you about ${ctx.topic.toLowerCase()}: the hardest part is not the part you can see. The visible challenges are tactical and they have known fixes. The invisible ones are about identity, rhythm, and the kind of slow grief that follows leaving a culture that shaped you. We pulled this thread further in <a href="/articles/${i0.slug}">${i0.title}</a>.</p>
+<p>You did not get the after-action briefing for this part because nobody knows how to give it. So we built one. The next sections walk through the practical, the cultural, and the personal moves that actually compound. If you want a different angle first, <a href="/articles/${i1.slug}">${i1.title}</a> is a good first stop.</p>`,
+    () => `<p>${ctx.topic} is one of those topics where the conventional advice fails the audience it is supposed to help. The platitudes assume veterans are fragile or unfocused. They are neither. They are highly trained adults trying to apply that training in a culture that uses different words for the same skills. Our deeper take on this lives at <a href="/articles/${i0.slug}">${i0.title}</a>.</p>
+<p>What veterans actually need is the translation layer, not the pep talk. So this article focuses on the translation. What military skills look like in civilian language. What civilian systems look like through a military lens. And how to use both without losing yourself in either. <a href="/articles/${i1.slug}">${i1.title}</a> is a useful side reading once you finish this one.</p>`,
+    () => `<p>If you have been chewing on ${ctx.topic.toLowerCase()} for a while, you already know the surface advice does not get you very far. The problem is not lack of effort. It is that the standard playbook was written for a different reader. We have been pushing back against that for a while, including in <a href="/articles/${i0.slug}">${i0.title}</a>.</p>
+<p>This piece is the next layer. It assumes you have already tried the obvious moves and they did not stick. It is for veterans who want the real shape of the work and the small set of practices that actually move the needle. You may want to keep <a href="/articles/${i1.slug}">${i1.title}</a> open as the companion piece.</p>`,
+    () => `<p>The first thing to understand about ${ctx.topic.toLowerCase()} is that it is not the same problem civilians face with a similar name. The vocabulary overlaps but the underlying terrain is different. That mismatch is the source of most of the frustration veterans report, and most of the bad advice they get. We dug into the mismatch in <a href="/articles/${i0.slug}">${i0.title}</a>.</p>
+<p>This article picks up that thread and gives you the working tools. Not theory. Not slogans. The five or six concrete practices that consistently produce results when veterans actually do them. <a href="/articles/${i1.slug}">${i1.title}</a> is recommended reading alongside this one.</p>`,
+    () => `<p>Veterans we have spoken with describe ${ctx.topic.toLowerCase()} the same way: it sneaks up on you, it does not respond to the usual self-discipline tools, and it is hard to talk about without sounding either fragile or arrogant. Both reactions are wrong but understandable. We covered why in <a href="/articles/${i0.slug}">${i0.title}</a>.</p>
+<p>This article is the working continuation. It assumes you have read or thought about the basics and you are ready for the part that takes a little nuance. It is direct without being harsh, kind without being soft. The companion piece on <a href="/articles/${i1.slug}">${i1.title}</a> is worth saving for after.</p>`,
+    () => `<p>Most veterans we hear from have already tried the obvious responses to ${ctx.topic.toLowerCase()} before they find this site. The advice was not bad, exactly. It was just incomplete. There is a layer underneath that no one had named for them. The naming is half the work, and we tried to do that naming honestly in <a href="/articles/${i0.slug}">${i0.title}</a>.</p>
+<p>What you are reading now is the next move after the naming. The practices, the sequences, the small tools that actually keep working past the first week. We will keep things concrete. <a href="/articles/${i1.slug}">${i1.title}</a> is a useful follow-up if any of this lands hard.</p>`,
+    () => `<p>The reason ${ctx.topic.toLowerCase()} feels harder than it should is that the part of you trained for high-stakes problem solving keeps trying to apply mission planning to a slow, social, ambiguous situation. That is not your fault. It is the wrong tool for the terrain. We made the case for a different toolkit in <a href="/articles/${i0.slug}">${i0.title}</a>.</p>
+<p>Here we go a layer deeper. What the right tools actually look like, when to use them, and how to know when you are making real progress versus just staying busy. None of it is complicated. All of it is uncomfortable for the first three weeks. <a href="/articles/${i1.slug}">${i1.title}</a> is recommended for a side angle.</p>`,
+    () => `<p>${ctx.topic} is one of the few transition challenges where the right move is often the opposite of the instinctive move. The instinct is to push harder, document more, sleep less, ask less. The actual win is usually softer, slower, and more relational than that. We mapped the why in <a href="/articles/${i0.slug}">${i0.title}</a>.</p>
+<p>This article gives you the how. The specific reframes, the daily rhythms, the conversations to start, and the resources that earn their place in your week. Read it slowly. <a href="/articles/${i1.slug}">${i1.title}</a> can wait until tomorrow if you want to sit with this first.</p>`,
+    () => `<p>You are not the first veteran to wrestle with ${ctx.topic.toLowerCase()} and you will not be the last. That is not a put-down. It is the most useful fact on this page. There is a worn path through this terrain and the people on the other side are willing to share it. We collected what we have learned in <a href="/articles/${i0.slug}">${i0.title}</a>.</p>
+<p>The article you are in now is the next step on that path. It assumes you are ready for some honest specifics and a little discomfort in service of real change. We will keep it grounded. The deeper work continues at <a href="/articles/${i1.slug}">${i1.title}</a> when you are ready.</p>`,
+  ];
+  const intro = INTRO_VARIANTS[Math.floor(rng() * INTRO_VARIANTS.length)]();
 
   // Section bodies, with the second-to-last section weaving the third internal link + the external link.
   const sectionsHtml = sections
@@ -329,12 +389,17 @@ export function generateTemplateArticle(ctx) {
   sectionsArr.splice(midIdx + 1, 0, bioCard.replace(/^/g, '') + '\n');
   const sectionsWithBio = sectionsArr.map((s, i) => (i === midIdx + 1 ? s : '<h2>' + s)).join('');
 
-  // Veteran Transition Library (3 Amazon products, soft language, "(paid link)")
+  // Veteran Transition Library — same Amazon-search switch as supplements:
+  // /s?k=<query>&tag=... never 404s, always converts, affiliate tag preserved.
   const productLeadIns = [
     'One option that helps with this is',
     'A tool that often helps here is',
     'Something worth considering is',
   ];
+  const productSearchUrl = (p) => {
+    const q = encodeURIComponent(p.name.replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim());
+    return `https://www.amazon.com/s?k=${q}&tag=${SITE.amazonTag}`;
+  };
   const libraryHtml = `<h2>Veteran Transition Library</h2>
 <p>This site keeps a short, working library of books and tools we actually recommend. Three picks for this article:</p>
 <ul>
@@ -342,7 +407,7 @@ ${products
   .slice(0, 3)
   .map(
     (p, i) =>
-      `<li>${productLeadIns[i % productLeadIns.length]} <a href="https://www.amazon.com/dp/${p.asin}?tag=${SITE.amazonTag}" target="_blank" rel="nofollow sponsored noopener">${p.name}</a> (paid link).</li>`,
+      `<li>${productLeadIns[i % productLeadIns.length]} <a href="${productSearchUrl(p)}" target="_blank" rel="nofollow sponsored noopener">${p.name}</a> (paid link).</li>`,
   )
   .join('\n')}
 </ul>
