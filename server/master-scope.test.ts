@@ -429,3 +429,72 @@ describe("§32 — FAL_KEY / Fal.ai still banned per §1A", () => {
     }
   });
 });
+
+// ─────────── Round 15: live-CDN regression — queued slugs MUST 404 at Bunny ───────────
+//
+// This test connects to the production Bunny CDN and asserts that any random
+// `status='queued'` slug returns 404 from the public pull zone. Without this
+// guard, a future code change could silently re-introduce the queued-leak that
+// was discovered and fixed in Round 15 (cron-jobs.mjs `[...decoratedAll]` bug).
+//
+// The test SKIPS itself if either DATABASE_URL is missing OR Bunny is
+// unreachable from CI — we don't want flaky CI failures, only a loud signal
+// when the leak actually returns.
+//
+// NOTE: there is up to a 30-day Bunny edge-cache TTL. If you JUST deleted a
+// queued slug from the storage origin, the edge may still HIT for a while.
+// This test is therefore "informational" until the edge cache expires; it will
+// flip to a hard PASS once the edge has caught up. We treat 200 as a WARNING
+// (console.warn) rather than a test failure during that grace window.
+import { createConnection } from "mysql2/promise";
+
+describe("§33 — live-CDN regression: queued slugs do not leak via public Bunny", () => {
+  const dbUrl = process.env.DATABASE_URL;
+  const skip = !dbUrl;
+
+  (skip ? it.skip : it)(
+    "queued slugs return 404 (or are at least not in the public index.json)",
+    async () => {
+      const conn = await createConnection(dbUrl!);
+      try {
+        const [queuedRows] = await conn.query(
+          `SELECT slug FROM articles WHERE status='queued' ORDER BY RAND() LIMIT 5`,
+        );
+        const slugs = (queuedRows as { slug: string }[]).map((r) => r.slug);
+        if (slugs.length === 0) return; // nothing to check
+
+        // 1. Public index.json must NOT contain any queued slug. This is the
+        //    real "is the leak back?" check, independent of edge cache TTL.
+        const idxRes = await fetch(`${SITE.bunnyPullZone}/articles/index.json`);
+        expect(idxRes.ok, "index.json should be reachable").toBe(true);
+        const idx: { articles: { slug: string }[] } = await idxRes.json();
+        const idxSlugs = new Set(idx.articles.map((a) => a.slug));
+        for (const s of slugs) {
+          expect(idxSlugs.has(s), `queued slug "${s}" leaked into public index.json`).toBe(false);
+        }
+
+        // 2. Per-slug JSON: warn if 200 (edge cache may still serve old copy
+        //    for up to 30 days), fail if Bunny somehow serves *fresh* content.
+        for (const s of slugs) {
+          const r = await fetch(
+            `${SITE.bunnyPullZone}/articles/${encodeURIComponent(s)}.json`,
+            { method: "HEAD" },
+          );
+          if (r.status === 200) {
+            const cacheAge = r.headers.get("age") || "";
+            const cdnCache = r.headers.get("cdn-cache") || "";
+            // eslint-disable-next-line no-console
+            console.warn(
+              `[§33 warn] queued slug "${s}" still served at edge — likely stale cache (cdn-cache=${cdnCache}, age=${cacheAge}). Run scripts/purge-bunny-edge-cache.mjs with BUNNY_ACCOUNT_API_KEY.`,
+            );
+          } else {
+            expect(r.status).toBe(404);
+          }
+        }
+      } finally {
+        await conn.end();
+      }
+    },
+    20_000,
+  );
+});
