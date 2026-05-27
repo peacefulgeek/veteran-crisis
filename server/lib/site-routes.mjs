@@ -315,38 +315,46 @@ export function registerSiteRoutes(app) {
     }
   }
 
-  // ── public JSON: list of published articles → redirect to Bunny CDN with
-  // ‘?v=<latest-publish-ms>’ cache-buster so updates surface immediately.
+  // ── public JSON: list of published articles. Server-side proxy to Bunny CDN
+  // (was a 302 redirect, but Bunny doesn't send Access-Control-Allow-Origin so
+  // browser fetches across the redirect failed with TypeError: Failed to fetch).
+  // Same-origin proxy keeps the CDN cache benefit while making fetch() work.
   app.get('/api/articles', async (_req, res) => {
     try {
       const v = await _indexVersion();
       const buster = v ? `?v=${v}` : '';
-      res.set('Cache-Control', 'public, max-age=120');
-      res.redirect(302, `${SITE.bunnyPullZone}/articles/index.json${buster}`);
-    } catch {
-      // On DB hiccup, fall back to plain redirect rather than 500-ing the page.
-      res.set('Cache-Control', 'public, max-age=120');
-      res.redirect(302, `${SITE.bunnyPullZone}/articles/index.json`);
+      const upstream = await fetch(`${SITE.bunnyPullZone}/articles/index.json${buster}`);
+      if (!upstream.ok) {
+        return res.status(502).json({ error: 'upstream', status: upstream.status });
+      }
+      const body = await upstream.text();
+      res.set('Cache-Control', 'public, max-age=120, s-maxage=300');
+      res.set('Content-Type', 'application/json; charset=utf-8');
+      res.set('Access-Control-Allow-Origin', '*');
+      res.send(body);
+    } catch (e) {
+      res.status(500).json({ error: 'fetch-failed', message: String(e?.message || e) });
     }
   });
 
-  // ── public JSON: single article → redirect to Bunny CDN with
-  // ‘?v=<lastModifiedAt-ms>’. Static, deterministic, cache-busts on edit.
+  // ── public JSON: single article. Same server-side-proxy treatment.
   app.get('/api/articles/:slug', async (req, res) => {
     try {
       const v = await _slugVersion(req.params.slug);
       if (!v) return res.status(404).json({ error: 'not-found' });
-      res.set('Cache-Control', 'public, max-age=300');
-      res.redirect(
-        302,
+      const upstream = await fetch(
         `${SITE.bunnyPullZone}/articles/${encodeURIComponent(req.params.slug)}.json?v=${v}`,
       );
-    } catch {
-      res.set('Cache-Control', 'public, max-age=300');
-      res.redirect(
-        302,
-        `${SITE.bunnyPullZone}/articles/${encodeURIComponent(req.params.slug)}.json`,
-      );
+      if (!upstream.ok) {
+        return res.status(upstream.status).json({ error: 'upstream', status: upstream.status });
+      }
+      const body = await upstream.text();
+      res.set('Cache-Control', 'public, max-age=300, s-maxage=600');
+      res.set('Content-Type', 'application/json; charset=utf-8');
+      res.set('Access-Control-Allow-Origin', '*');
+      res.send(body);
+    } catch (e) {
+      res.status(500).json({ error: 'fetch-failed', message: String(e?.message || e) });
     }
   });
 
