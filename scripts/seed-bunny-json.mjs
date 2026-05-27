@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 // Standalone seeder: pushes ALL 500 articles to Bunny CDN as JSON.
 // - articles/index.json       → published only (public API redirects here)
-// - articles/all-index.json   → every status (admin visibility into the 469 gated)
 // - articles/{slug}.json      → one file per article, all 500
 // - feeds/sitemap.xml         → published only
 // - feeds/feed.xml            → top 30 published
@@ -40,20 +39,8 @@ const indexPayload = {
 console.log('[seed-bunny] uploading articles/index.json ...');
 console.log('[seed-bunny]   →', await putJsonToBunny('articles/index.json', indexPayload));
 
-// 1b. Admin index (every row, lightweight)
-const adminIndexPayload = {
-  generatedAt: new Date().toISOString(),
-  total: decoratedAll.length,
-  byStatus,
-  articles: decoratedAll.map(r => ({
-    id: r.id, slug: r.slug, title: r.title, status: r.status,
-    category: r.category, tags: r.tags, heroUrl: r.heroUrl,
-    author: r.author, queuedAt: r.queuedAt, publishedAt: r.publishedAt,
-    lastModifiedAt: r.lastModifiedAt, readingTime: r.readingTime,
-  })),
-};
-console.log('[seed-bunny] uploading articles/all-index.json ...');
-console.log('[seed-bunny]   →', await putJsonToBunny('articles/all-index.json', adminIndexPayload));
+// 1b. Admin all-index removed (Round 14): never publish total/byStatus to a public CDN.
+//     Admins query MySQL directly for queue overview.
 
 // 2. Per-article JSON for ALL 500 — parallel upload
 let perOk = 0;

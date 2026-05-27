@@ -18,11 +18,7 @@ type Article = {
 function HeroCounters() {
   // Live trust numbers, no hype
   return (
-    <div className="grid grid-cols-3 gap-6 max-w-2xl mx-auto mt-12 pt-8 border-t border-[#1A2018]/10">
-      <div>
-        <div className="font-serif text-3xl md:text-4xl text-[#1A2018]">500</div>
-        <div className="text-xs uppercase tracking-widest text-[#1A2018]/60 mt-1">Articles</div>
-      </div>
+    <div className="grid grid-cols-2 gap-6 max-w-xl mx-auto mt-12 pt-8 border-t border-[#1A2018]/10">
       <div>
         <div className="font-serif text-3xl md:text-4xl text-[#1A2018]">208</div>
         <div className="text-xs uppercase tracking-widest text-[#1A2018]/60 mt-1">Vetted herbs &amp; supplements</div>
@@ -135,7 +131,7 @@ export default function Home() {
             {[
               {
                 title: "Read",
-                subtitle: "500 articles on transition, VA, family, money, and the inner work.",
+                subtitle: "Plainspoken essays on transition, VA, family, money, and the inner work.",
                 href: "/articles",
                 cta: "Open the library",
                 img: `${BUNNY}/library/lib-15.webp`,

@@ -117,20 +117,8 @@ async function runPublishToBunny() {
       })),
     };
     await putJsonToBunny('articles/index.json', indexPayload);
-
-    // 1b. Admin index JSON — every row, every status. Lets admin/owner see all 500.
-    const adminIndexPayload = {
-      generatedAt: new Date().toISOString(),
-      total: decoratedAll.length,
-      byStatus: decoratedAll.reduce((acc, r) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; }, {}),
-      articles: decoratedAll.map(r => ({
-        id: r.id, slug: r.slug, title: r.title, status: r.status,
-        category: r.category, tags: r.tags, heroUrl: r.heroUrl,
-        author: r.author, queuedAt: r.queuedAt, publishedAt: r.publishedAt,
-        lastModifiedAt: r.lastModifiedAt, readingTime: r.readingTime,
-      })),
-    };
-    await putJsonToBunny('articles/all-index.json', adminIndexPayload);
+    // (Round 14) Admin all-index removed: never publish total/byStatus library size to a public CDN.
+    // Admins query MySQL directly when they need the queue overview.
 
     // 2. Per-article JSON for ALL 500 (used by /api/articles/:slug for published,
     //    and by future admin tooling for queued). Parallel-uploaded for speed.
@@ -182,7 +170,7 @@ async function runPublishToBunny() {
     const feedXml = ['<?xml version="1.0" encoding="UTF-8"?>', '<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom">', '<channel>', `<title>${escape(SITE.name)}</title>`, `<link>${escape(SITE.baseUrl)}</link>`, `<atom:link href="${escape(SITE.baseUrl)}/feed.xml" rel="self" type="application/rss+xml" />`, `<description>${escape(SITE.oneLine || '')}</description>`, '<language>en-us</language>', `<lastBuildDate>${rfc822(newest || Date.now())}</lastBuildDate>`, '<generator>Veteran Crisis Editorial Engine</generator>', items, '</channel>', '</rss>'].join('\n');
     await putToBunny('feeds/feed.xml', feedXml, 'application/rss+xml; charset=utf-8');
 
-    await logRun(conn, 'publish-to-bunny', 'ok', `pub-index(${decorated.length})+admin-index(${decoratedAll.length})+${perOk}/${decoratedAll.length} per-article+sitemap+feed`);
+    await logRun(conn, 'publish-to-bunny', 'ok', `pub-index(${decorated.length})+${perOk}/${decoratedAll.length} per-article+sitemap+feed`);
   } catch (e) {
     await logRun(conn, 'publish-to-bunny', 'error', String(e.stack || e.message || e));
   } finally { await conn.end(); }

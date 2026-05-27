@@ -376,15 +376,12 @@ describe("§29 — publish-to-bunny writes ALL 500 articles (every status)", () 
     expect(m, "expected publish-to-bunny SELECT block").toBeTruthy();
     expect(m![0]).not.toMatch(/WHERE\s+status\s*=\s*'published'/);
   });
-  it("writes both public articles/index.json and admin articles/all-index.json", () => {
+  it("writes public articles/index.json (no admin all-index leaked publicly)", () => {
     expect(src).toMatch(/putJsonToBunny\(\s*['"`]articles\/index\.json['"`]/);
-    expect(src).toMatch(/putJsonToBunny\(\s*['"`]articles\/all-index\.json['"`]/);
+    expect(src).not.toMatch(/putJsonToBunny\(\s*['"`]articles\/all-index\.json['"`]/);
   });
   it("per-article loop iterates over decoratedAll (all 500), not just published", () => {
     expect(src).toMatch(/queue\s*=\s*\[\.\.\.decoratedAll\]|for[\s\S]{0,40}?decoratedAll/);
-  });
-  it("admin index includes byStatus counts", () => {
-    expect(src).toMatch(/byStatus/);
   });
 });
 
@@ -394,8 +391,8 @@ describe("§30 — seed-bunny-json.mjs reseeds all 500", () => {
     expect(src).toMatch(/FROM articles\s+ORDER BY/);
     expect(src).not.toMatch(/WHERE\s+status\s*=\s*'published'/);
   });
-  it("uploads admin all-index.json", () => {
-    expect(src).toMatch(/articles\/all-index\.json/);
+  it("does NOT upload admin all-index.json (Round 14 — no library size leak)", () => {
+    expect(src).not.toMatch(/putJsonToBunny\(\s*['"`]articles\/all-index\.json['"`]/);
   });
 });
 
