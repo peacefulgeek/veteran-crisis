@@ -194,3 +194,32 @@
 - [x] Updated §24 vitest to assert cap is gone (no `cap=100`, no `>= 100` check)
 - [x] Verified Bunny CDN: public index=32 published, admin all-index=500 (byStatus pub=32, queued=468), 5 random per-slug 200 OK 13–14 KB each
 - [x] 54/54 vitest pass, pushed a2f2b0f to peacefulgeek/veteran-crisis main
+
+## Round 15: Full top-to-bottom audit + defect fix
+- [ ] Static: tsc --noEmit clean (0 errors)
+- [ ] Static: pnpm build clean (no warnings beyond size hints)
+- [ ] Static: pnpm test all green
+- [ ] Static: dead-imports scan (no unresolved imports or references to removed modules)
+- [ ] Runtime: server boots fresh, all 6 crons register, /health returns 200
+- [ ] Runtime: every public route returns expected status (200/302/404 — no 500s)
+- [ ] Runtime: every script in scripts/ either runs or is obviously broken in a documented way
+- [ ] Security: no secrets in repo other than Bunny defaults (which were already public)
+- [ ] Security: ADMIN_KEY gating actually works on /api/cron-status
+- [ ] Security: no PII or queued slugs leak in /api/articles, /sitemap.xml, /feed.xml
+- [ ] De-Manus: 0 references to manus-storage, registerOAuthRoutes, registerStorageProxy, vite-plugin-manus-runtime, BUILT_IN_FORGE_API, OAUTH_SERVER_URL, OWNER_OPEN_ID, OWNER_NAME, VITE_APP_ID, VITE_OAUTH_PORTAL_URL in runtime source
+- [ ] De-Manus: dead Manus _core files removed or quarantined
+- [ ] Push + checkpoint with a real defect-list summary
+
+## Round 15 — Full de-Manus audit (complete)
+- [x] Replaced server/_core/sdk.ts with no-op stub (no OAuth, no module-load HTTP, no console noise)
+- [x] Replaced server/_core/systemRouter.ts with minimal stub (just `ok` query; no notifyOwner, no Manus notification import)
+- [x] Stripped Manus fields from server/_core/env.ts (removed appId, oAuthServerUrl, ownerOpenId, forgeApiUrl, forgeApiKey)
+- [x] Removed ENV.ownerOpenId admin-promotion logic from server/db.ts (no users/OAuth → no admin role)
+- [x] Deleted dead _core files: oauth.ts, dataApi.ts, imageGeneration.ts, map.ts, storageProxy.ts, voiceTranscription.ts, llm.ts, notification.ts, server/storage.ts
+- [x] client/src/const.ts: getLoginUrl() → returns "/" stub (no Manus OAuth URL builder)
+- [x] client/src/main.tsx: removed redirectToLoginIfUnauthorized callback (no more Manus login redirect on tRPC 401)
+- [x] Deleted unused client files: components/DashboardLayout.tsx, DashboardLayoutSkeleton.tsx, ManusDialog.tsx, AIChatBox.tsx, Map.tsx, _core/hooks/useAuth.ts, pages/ComponentShowcase.tsx
+- [x] Removed manus-runtime-user-info localStorage write (lived in deleted useAuth hook)
+- [x] package.json: removed vite-plugin-manus-runtime devDep, removed redundant `pnpm` self-devDep, removed @types/google.maps (Map.tsx deleted)
+- [x] vitest: 53/53 passing (auth.logout 1, master-scope 52)
+- [x] Production build clean: dist/index.js 183.5 kB, dist/public/assets/index-*.js 750 kB

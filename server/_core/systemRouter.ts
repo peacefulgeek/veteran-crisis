@@ -1,29 +1,10 @@
-import { z } from "zod";
-import { notifyOwner } from "./notification";
-import { adminProcedure, publicProcedure, router } from "./trpc";
+// De-Manus stub: original Manus systemRouter (health + notifyOwner) removed.
+// /health is served by Express directly in server/_core/index.ts.
+// Owner notifications are no longer routed through Manus.
+import { publicProcedure, router } from "./trpc";
 
 export const systemRouter = router({
-  health: publicProcedure
-    .input(
-      z.object({
-        timestamp: z.number().min(0, "timestamp cannot be negative"),
-      })
-    )
-    .query(() => ({
-      ok: true,
-    })),
-
-  notifyOwner: adminProcedure
-    .input(
-      z.object({
-        title: z.string().min(1, "title is required"),
-        content: z.string().min(1, "content is required"),
-      })
-    )
-    .mutation(async ({ input }) => {
-      const delivered = await notifyOwner(input);
-      return {
-        success: delivered,
-      } as const;
-    }),
+  // Kept as a trivial query so the tRPC `system.*` namespace still type-checks
+  // for any leftover client code without making any external calls.
+  ok: publicProcedure.query(() => ({ ok: true } as const)),
 });
