@@ -32,12 +32,19 @@ Configure these in Railway's project **Variables** panel. Required values must b
 | `VITE_APP_LOGO` | optional | URL to the favicon/logo. |
 | `AUTO_GEN_ENABLED` | optional | Set to `false` to disable all crons. Defaults to enabled. |
 | `ADMIN_KEY` | optional | When set, `/api/cron-status` requires `X-Admin-Key: <value>` header or `?key=<value>` query. When unset, the endpoint is open. |
+| `AMAZON_TAG` | optional | Amazon Associates tag for affiliate links. Defaults to `spankyspinola-20`. |
+| `BUNNY_STORAGE_ZONE` | optional | Bunny CDN storage zone name. Defaults to `veteran-crisis`. |
+| `BUNNY_API_KEY` | optional | Bunny CDN storage API key. Defaults to the master-scope value baked into `site-config.mjs`. Set to rotate without a code push. |
+| `BUNNY_PULL_ZONE` | optional | Public CDN base URL. Defaults to `https://veteran-crisis.b-cdn.net`. |
+| `BUNNY_HOSTNAME` | optional | Bunny storage region host. Defaults to `ny.storage.bunnycdn.com`. |
 | `NODE_ENV` | leave unset | Railway sets `NODE_ENV=production` automatically; the `start` script also sets it explicitly. |
 | `PORT` | leave unset | Railway injects this. The server binds to it directly without scanning, and falls back to `8080` only if `NODE_ENV=production` and `PORT` is missing (**Lesson 5** — defaulting to `10000` or `3000` in production produces silent healthcheck failures when `PORT` is dropped from the environment). |
 
-**Removed entirely:** `JWT_SECRET`, `OAUTH_SERVER_URL`, `VITE_APP_ID`, `VITE_OAUTH_PORTAL_URL`, `OWNER_OPEN_ID`, `OWNER_NAME`, `BUILT_IN_FORGE_API_URL`, `BUILT_IN_FORGE_API_KEY`, `VITE_FRONTEND_FORGE_API_KEY`, `VITE_FRONTEND_FORGE_API_URL`. The Manus OAuth flow, `/manus-storage` proxy, `vite-plugin-manus-runtime`, and FORGE LLM helpers are all stripped from the codebase. Public site uses Express routes only; tRPC remains mounted at `/api/trpc` for future internal admin endpoints.
+**Removed entirely (do not set on Railway):** `JWT_SECRET`, `OAUTH_SERVER_URL`, `VITE_APP_ID`, `VITE_OAUTH_PORTAL_URL`, `OWNER_OPEN_ID`, `OWNER_NAME`, `BUILT_IN_FORGE_API_URL`, `BUILT_IN_FORGE_API_KEY`, `VITE_FRONTEND_FORGE_API_KEY`, `VITE_FRONTEND_FORGE_API_URL`. The Manus OAuth flow, `/manus-storage` proxy, `vite-plugin-manus-runtime`, and FORGE LLM helpers are all stripped from the codebase. Setting `JWT_SECRET` is harmless but no code reads it. Public site uses Express routes only; tRPC remains mounted at `/api/trpc` for future internal admin endpoints.
 
-The Bunny CDN credentials (`bunnyStorageZone`, `bunnyApiKey`, `bunnyHostname`, `bunnyPullZone`) are currently hardcoded in `server/lib/site-config.mjs`. To externalize them, move them to env vars (`BUNNY_STORAGE_ZONE`, `BUNNY_API_KEY`, `BUNNY_PULL_ZONE`) and update the import sites in `server/lib/bunny.mjs` and `scripts/gen-500-heroes.mjs`.
+**Explicitly excluded — `FAL_KEY` / Fal.ai.** Master scope §1A bans Fal.ai entirely. Do not set a `FAL_KEY` on the Railway service; no code path reads it and adding it would surface as drift in the next audit. Image generation runs through OpenAI DALL·3 in `scripts/gen-500-heroes.mjs` (already executed for the existing 500 unique heroes on Bunny) — no inference-time image generation runs in the deployed server.
+
+Bunny CDN credentials now honor `BUNNY_STORAGE_ZONE` / `BUNNY_API_KEY` / `BUNNY_PULL_ZONE` / `BUNNY_HOSTNAME` env vars and fall back to the master-scope defaults in `server/lib/site-config.mjs` when unset. Set them on Railway to rotate Bunny credentials without a code push.
 
 ## 4. One-time Railway project setup
 

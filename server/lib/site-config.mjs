@@ -10,13 +10,14 @@ export const SITE = {
   authorSlug: 'the-oracle-lover',
   authorUrl: 'https://theoraclelover.com',
   authorCred: 'Intuitive Educator & Oracle Guide',
-  amazonTag: 'spankyspinola-20',
-  // Bunny CDN — production credentials hardcoded per master scope §9.
-  // Dedicated zone for veteran-crisis (peacefulgeek), NY region, public pull zone.
-  bunnyStorageZone: 'veteran-crisis',
-  bunnyApiKey: '42c5b84f-70e4-493c-98cacd9b0731-f166-4832',
-  bunnyPullZone: 'https://veteran-crisis.b-cdn.net',
-  bunnyHostname: 'ny.storage.bunnycdn.com',
+  amazonTag: process.env.AMAZON_TAG || 'spankyspinola-20',
+  // Bunny CDN — production credentials. Defaults match master scope §9
+  // (dedicated zone for veteran-crisis, NY region, public pull zone).
+  // Override via env in Railway to rotate credentials without a code push.
+  bunnyStorageZone: process.env.BUNNY_STORAGE_ZONE || 'veteran-crisis',
+  bunnyApiKey: process.env.BUNNY_API_KEY || '42c5b84f-70e4-493c-98cacd9b0731-f166-4832',
+  bunnyPullZone: process.env.BUNNY_PULL_ZONE || 'https://veteran-crisis.b-cdn.net',
+  bunnyHostname: process.env.BUNNY_HOSTNAME || 'ny.storage.bunnycdn.com',
 };
 
 export const VOICE = {

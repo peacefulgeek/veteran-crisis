@@ -1,6 +1,10 @@
 #!/usr/bin/env node
-// Standalone seeder: pushes articles/index.json + articles/{slug}.json + sitemap.xml + feed.xml
-// to Bunny CDN. Avoids importing cron-jobs.mjs (which schedules timers).
+// Standalone seeder: pushes ALL 500 articles to Bunny CDN as JSON.
+// - articles/index.json       → published only (public API redirects here)
+// - articles/all-index.json   → every status (admin visibility into the 469 gated)
+// - articles/{slug}.json      → one file per article, all 500
+// - feeds/sitemap.xml         → published only
+// - feeds/feed.xml            → top 30 published
 import { getConn } from '../server/lib/articles-db.mjs';
 import { putToBunny, putJsonToBunny } from '../server/lib/bunny.mjs';
 import { SITE } from '../server/lib/site-config.mjs';
@@ -8,17 +12,22 @@ import { SITE } from '../server/lib/site-config.mjs';
 const t0 = Date.now();
 const conn = await getConn();
 
-console.log('[seed-bunny] querying published articles...');
-const [pub] = await conn.query(
-  `SELECT slug, title, metaDescription, body, category, tags, heroUrl, heroAlt, ogImage,
-          author, publishedAt, lastModifiedAt, readingTime, wordCount
-     FROM articles WHERE status='published' ORDER BY publishedAt DESC LIMIT 5000`,
+console.log('[seed-bunny] querying ALL articles (every status)...');
+const [all] = await conn.query(
+  `SELECT id, slug, title, metaDescription, body, category, tags, heroUrl, heroAlt, ogImage,
+          author, status, queuedAt, publishedAt, lastModifiedAt, readingTime, wordCount
+     FROM articles ORDER BY publishedAt IS NULL, publishedAt DESC, id ASC`,
 );
-console.log(`[seed-bunny] got ${pub.length} rows`);
+console.log(`[seed-bunny] got ${all.length} rows`);
 
 const safe = (v) => { if (v == null) return []; if (Array.isArray(v) || typeof v === 'object') return v; if (typeof v !== 'string') return []; try { return JSON.parse(v); } catch { return []; } };
-const decorated = pub.map(r => ({ ...r, tags: safe(r.tags) }));
+const decoratedAll = all.map(r => ({ ...r, tags: safe(r.tags) }));
+const decorated = decoratedAll.filter(r => r.status === 'published');
 
+const byStatus = decoratedAll.reduce((acc, r) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; }, {});
+console.log('[seed-bunny] by status:', byStatus);
+
+// 1a. Public index (published only)
 const indexPayload = {
   generatedAt: new Date().toISOString(),
   total: decorated.length,
@@ -29,20 +38,47 @@ const indexPayload = {
   })),
 };
 console.log('[seed-bunny] uploading articles/index.json ...');
-const indexUrl = await putJsonToBunny('articles/index.json', indexPayload);
-console.log('[seed-bunny]   →', indexUrl);
+console.log('[seed-bunny]   →', await putJsonToBunny('articles/index.json', indexPayload));
 
+// 1b. Admin index (every row, lightweight)
+const adminIndexPayload = {
+  generatedAt: new Date().toISOString(),
+  total: decoratedAll.length,
+  byStatus,
+  articles: decoratedAll.map(r => ({
+    id: r.id, slug: r.slug, title: r.title, status: r.status,
+    category: r.category, tags: r.tags, heroUrl: r.heroUrl,
+    author: r.author, queuedAt: r.queuedAt, publishedAt: r.publishedAt,
+    lastModifiedAt: r.lastModifiedAt, readingTime: r.readingTime,
+  })),
+};
+console.log('[seed-bunny] uploading articles/all-index.json ...');
+console.log('[seed-bunny]   →', await putJsonToBunny('articles/all-index.json', adminIndexPayload));
+
+// 2. Per-article JSON for ALL 500 — parallel upload
 let perOk = 0;
-for (const r of decorated) {
-  try {
-    await putJsonToBunny(`articles/${r.slug}.json`, r);
-    perOk++;
-    if (perOk % 5 === 0 || perOk === decorated.length) console.log(`[seed-bunny] per-article ${perOk}/${decorated.length}`);
-  } catch (err) {
-    console.warn('[seed-bunny] per-article failed', r.slug, err.message);
+let perFail = 0;
+const CONCURRENCY = 10;
+const queue = [...decoratedAll];
+const total = queue.length;
+await Promise.all(Array.from({ length: CONCURRENCY }, async (_, workerId) => {
+  while (queue.length) {
+    const r = queue.shift();
+    if (!r) break;
+    try {
+      await putJsonToBunny(`articles/${r.slug}.json`, r);
+      perOk++;
+      if (perOk % 25 === 0 || perOk === total) {
+        console.log(`[seed-bunny] per-article ${perOk}/${total} (ok=${perOk}, fail=${perFail})`);
+      }
+    } catch (err) {
+      perFail++;
+      console.warn(`[seed-bunny] FAIL ${r.slug}: ${err.message}`);
+    }
   }
-}
+}));
 
+// 3. sitemap.xml (published only)
 const today = new Date().toISOString().slice(0, 10);
 const staticPaths = ['/', '/articles', '/about', '/recommended', '/privacy', '/disclosures', '/contact', `/author/${SITE.authorSlug}`];
 const sitemapXml = [
@@ -61,6 +97,7 @@ const sitemapXml = [
 console.log('[seed-bunny] uploading feeds/sitemap.xml ...');
 console.log('[seed-bunny]   →', await putToBunny('feeds/sitemap.xml', sitemapXml, 'application/xml; charset=utf-8'));
 
+// 4. feed.xml (top 30 published)
 const top30 = decorated.slice(0, 30);
 const escape = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 const cdata = (s) => `<![CDATA[${String(s || '').replace(/]]>/g, ']]]]><![CDATA[>')}]]>`;
@@ -76,4 +113,4 @@ console.log('[seed-bunny] uploading feeds/feed.xml ...');
 console.log('[seed-bunny]   →', await putToBunny('feeds/feed.xml', feedXml, 'application/rss+xml; charset=utf-8'));
 
 await conn.end();
-console.log(`[seed-bunny] done in ${((Date.now() - t0) / 1000).toFixed(1)}s — ${perOk}/${decorated.length} per-article`);
+console.log(`[seed-bunny] done in ${((Date.now() - t0) / 1000).toFixed(1)}s — per-article ok=${perOk}/${total}, fail=${perFail}, byStatus=${JSON.stringify(byStatus)}`);

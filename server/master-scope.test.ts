@@ -364,3 +364,67 @@ describe("§28 — Railway 9-lesson hardening", () => {
     }
   });
 });
+
+
+// ─────────── Round 12: 500 articles on Bunny + env wiring ───────────
+
+describe("§29 — publish-to-bunny writes ALL 500 articles (every status)", () => {
+  const src = readFileSync("server/lib/cron-jobs.mjs", "utf-8");
+  it("SELECTs without WHERE status filter so all statuses included", () => {
+    const m = src.match(/runPublishToBunny[\s\S]*?SELECT[\s\S]{1,500}?FROM articles[\s\S]{0,300}?ORDER BY/);
+    expect(m, "expected publish-to-bunny SELECT block").toBeTruthy();
+    expect(m![0]).not.toMatch(/WHERE\s+status\s*=\s*'published'/);
+  });
+  it("writes both public articles/index.json and admin articles/all-index.json", () => {
+    expect(src).toMatch(/putJsonToBunny\(\s*['"`]articles\/index\.json['"`]/);
+    expect(src).toMatch(/putJsonToBunny\(\s*['"`]articles\/all-index\.json['"`]/);
+  });
+  it("per-article loop iterates over decoratedAll (all 500), not just published", () => {
+    expect(src).toMatch(/queue\s*=\s*\[\.\.\.decoratedAll\]|for[\s\S]{0,40}?decoratedAll/);
+  });
+  it("admin index includes byStatus counts", () => {
+    expect(src).toMatch(/byStatus/);
+  });
+});
+
+describe("§30 — seed-bunny-json.mjs reseeds all 500", () => {
+  const src = readFileSync("scripts/seed-bunny-json.mjs", "utf-8");
+  it("queries every status, not just published", () => {
+    expect(src).toMatch(/FROM articles\s+ORDER BY/);
+    expect(src).not.toMatch(/WHERE\s+status\s*=\s*'published'/);
+  });
+  it("uploads admin all-index.json", () => {
+    expect(src).toMatch(/articles\/all-index\.json/);
+  });
+});
+
+describe("§31 — env wiring honors user-provided values", () => {
+  const src = readFileSync("server/lib/site-config.mjs", "utf-8");
+  it("AMAZON_TAG env overrides default", () => {
+    expect(src).toMatch(/process\.env\.AMAZON_TAG/);
+  });
+  it("BUNNY_* env overrides default", () => {
+    expect(src).toMatch(/process\.env\.BUNNY_STORAGE_ZONE/);
+    expect(src).toMatch(/process\.env\.BUNNY_API_KEY/);
+    expect(src).toMatch(/process\.env\.BUNNY_PULL_ZONE/);
+    expect(src).toMatch(/process\.env\.BUNNY_HOSTNAME/);
+  });
+  it("AMAZON_TAG default still points at master-scope tag", () => {
+    expect(src).toMatch(/spankyspinola-20/);
+  });
+});
+
+describe("§32 — FAL_KEY / Fal.ai still banned per §1A", () => {
+  it("no runtime code references FAL_KEY or fal.ai", () => {
+    const files = [
+      "server/lib/site-config.mjs",
+      "server/lib/cron-jobs.mjs",
+      "server/lib/openai-client.mjs",
+      "server/_core/index.ts",
+    ];
+    for (const f of files) {
+      const txt = readFileSync(f, "utf-8");
+      expect(txt, `${f} must not reference FAL_KEY`).not.toMatch(/FAL_KEY|fal\.ai|fal-ai/i);
+    }
+  });
+});

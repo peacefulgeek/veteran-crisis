@@ -99,15 +99,18 @@ async function runPublishOne() {
 async function runPublishToBunny() {
   const conn = await getConn();
   try {
-    const [pub] = await conn.query(
-      `SELECT slug, title, metaDescription, body, category, tags, heroUrl, heroAlt, ogImage,
-              author, publishedAt, lastModifiedAt, readingTime, wordCount
-         FROM articles WHERE status='published' ORDER BY publishedAt DESC LIMIT 5000`,
+    // Pull ALL articles regardless of status so every one of the 500 has a JSON
+    // on Bunny. Public surfaces still filter to status='published'.
+    const [all] = await conn.query(
+      `SELECT id, slug, title, metaDescription, body, category, tags, heroUrl, heroAlt, ogImage,
+              author, status, queuedAt, publishedAt, lastModifiedAt, readingTime, wordCount
+         FROM articles ORDER BY publishedAt IS NULL, publishedAt DESC, id ASC`,
     );
     const safe = (v) => { if (v == null) return []; if (Array.isArray(v) || typeof v === 'object') return v; if (typeof v !== 'string') return []; try { return JSON.parse(v); } catch { return []; } };
-    const decorated = pub.map(r => ({ ...r, tags: safe(r.tags) }));
+    const decoratedAll = all.map(r => ({ ...r, tags: safe(r.tags) }));
+    const decorated = decoratedAll.filter(r => r.status === 'published');
 
-    // 1. Index JSON (used by /api/articles)
+    // 1a. Public index JSON — only published rows, used by /api/articles
     const indexPayload = {
       generatedAt: new Date().toISOString(),
       total: decorated.length,
@@ -119,16 +122,37 @@ async function runPublishToBunny() {
     };
     await putJsonToBunny('articles/index.json', indexPayload);
 
-    // 2. Per-article JSON (used by /api/articles/:slug)
+    // 1b. Admin index JSON — every row, every status. Lets admin/owner see all 500.
+    const adminIndexPayload = {
+      generatedAt: new Date().toISOString(),
+      total: decoratedAll.length,
+      byStatus: decoratedAll.reduce((acc, r) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; }, {}),
+      articles: decoratedAll.map(r => ({
+        id: r.id, slug: r.slug, title: r.title, status: r.status,
+        category: r.category, tags: r.tags, heroUrl: r.heroUrl,
+        author: r.author, queuedAt: r.queuedAt, publishedAt: r.publishedAt,
+        lastModifiedAt: r.lastModifiedAt, readingTime: r.readingTime,
+      })),
+    };
+    await putJsonToBunny('articles/all-index.json', adminIndexPayload);
+
+    // 2. Per-article JSON for ALL 500 (used by /api/articles/:slug for published,
+    //    and by future admin tooling for queued). Parallel-uploaded for speed.
     let perOk = 0;
-    for (const r of decorated) {
-      try {
-        await putJsonToBunny(`articles/${r.slug}.json`, r);
-        perOk++;
-      } catch (err) {
-        console.warn('[publish-to-bunny] per-article failed', r.slug, err.message);
+    const CONCURRENCY = 8;
+    const queue = [...decoratedAll];
+    await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
+      while (queue.length) {
+        const r = queue.shift();
+        if (!r) break;
+        try {
+          await putJsonToBunny(`articles/${r.slug}.json`, r);
+          perOk++;
+        } catch (err) {
+          console.warn('[publish-to-bunny] per-article failed', r.slug, err.message);
+        }
       }
-    }
+    }));
 
     // 3. sitemap.xml
     const today = new Date().toISOString().slice(0, 10);
@@ -162,7 +186,7 @@ async function runPublishToBunny() {
     const feedXml = ['<?xml version="1.0" encoding="UTF-8"?>', '<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom">', '<channel>', `<title>${escape(SITE.name)}</title>`, `<link>${escape(SITE.baseUrl)}</link>`, `<atom:link href="${escape(SITE.baseUrl)}/feed.xml" rel="self" type="application/rss+xml" />`, `<description>${escape(SITE.oneLine || '')}</description>`, '<language>en-us</language>', `<lastBuildDate>${rfc822(newest || Date.now())}</lastBuildDate>`, '<generator>Veteran Crisis Editorial Engine</generator>', items, '</channel>', '</rss>'].join('\n');
     await putToBunny('feeds/feed.xml', feedXml, 'application/rss+xml; charset=utf-8');
 
-    await logRun(conn, 'publish-to-bunny', 'ok', `index+${perOk}/${decorated.length} per-article+sitemap+feed`);
+    await logRun(conn, 'publish-to-bunny', 'ok', `pub-index(${decorated.length})+admin-index(${decoratedAll.length})+${perOk}/${decoratedAll.length} per-article+sitemap+feed`);
   } catch (e) {
     await logRun(conn, 'publish-to-bunny', 'error', String(e.stack || e.message || e));
   } finally { await conn.end(); }

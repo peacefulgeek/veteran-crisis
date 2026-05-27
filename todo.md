@@ -177,3 +177,14 @@
 - [x] L8 — repo is Dockerfile-free from this commit forward; Railway's first build will use Railpack with no Docker layer-cache history (remote cache state verified only after first deploy)
 - [x] L9 — DEPLOY-RAILWAY.md §6 documents delete+recreate DNS records at registrar
 - [x] 44/44 vitest pass, build clean, pushed a7b001b, checkpoint
+
+## Round 12: All 500 articles as JSON on Bunny + env wiring
+- [x] Verified DB integrity: 500 total = 31 published + 469 queued
+- [x] Extended publish-to-bunny cron: writes per-slug JSON for ALL 500 (every status) at concurrency 8
+- [x] Two indexes: articles/index.json (public, 31 published) + articles/all-index.json (admin, 500 with byStatus)
+- [x] Reseed completed: 500/500 per-slug JSON uploaded in 42s, 0 failures, verified via Bunny CDN curl
+- [x] AMAZON_TAG env wired with master-scope default (spankyspinola-20)
+- [x] BUNNY_STORAGE_ZONE / BUNNY_API_KEY / BUNNY_PULL_ZONE / BUNNY_HOSTNAME env wired
+- [x] JWT_SECRET documented as no-op in DEPLOY-RAILWAY §3 (harmless to set, no code reads it)
+- [x] FAL_KEY explicitly excluded per §1A; vitest §32 enforces no references in 4 runtime files
+- [x] 54/54 vitest pass, build clean, push, checkpoint
