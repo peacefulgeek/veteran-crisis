@@ -215,11 +215,12 @@ describe("master scope §16: /feed.xml RSS endpoint", () => {
   });
 });
 
-describe("§24 — 100-article publishing cap", () => {
-  it("publish cron enforces a hard cap of 100", () => {
+describe("§24 — 100-article publishing cap removed (Round 13)", () => {
+  it("publish cron has NO hard cap", () => {
     const cron = readFileSync("server/lib/cron-jobs.mjs", "utf-8");
-    expect(cron).toMatch(/SELECT COUNT\(\*\) AS n FROM articles WHERE status='published'/);
-    expect(cron).toMatch(/>=\s*100\)\s*return logRun\(conn,\s*'publish-one',\s*'skipped',\s*`cap=100/);
+    expect(cron).not.toMatch(/cap=100/);
+    expect(cron).not.toMatch(/Number\(capRows\[0\]\.n\)\s*>=\s*100/);
+    expect(cron).toMatch(/100-cap removed/);
   });
 });
 

@@ -66,12 +66,8 @@ async function runPublishOne() {
     const hour = new Date().toLocaleString('en-US', { timeZone: TZ, hour: '2-digit', hour12: false });
     const h = parseInt(hour, 10);
     if (h < 6 || h >= 19) return logRun(conn, 'publish-one', 'skipped', `hour=${h}`);
-    // Hard cap: never let the published count exceed 100. Anything beyond stays gated/queued
-    // until an existing published article is unpublished or the cap is raised.
-    const [capRows] = await conn.query(
-      `SELECT COUNT(*) AS n FROM articles WHERE status='published'`,
-    );
-    if (Number(capRows[0].n) >= 100) return logRun(conn, 'publish-one', 'skipped', `cap=100 reached=${capRows[0].n}`);
+    // 100-cap removed (Round 13). Cron will continue promoting queued articles
+    // until the queue is empty. Per-day limit (~4) still applies, see below.
     const [todayRows] = await conn.query(
       `SELECT COUNT(*) AS n FROM articles
         WHERE status='published'
