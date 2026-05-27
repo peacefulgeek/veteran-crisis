@@ -315,20 +315,19 @@ export function registerSiteRoutes(app) {
     }
   }
 
-  // ── public JSON: list of published articles. Server-side proxy to Bunny CDN
-  // (was a 302 redirect, but Bunny doesn't send Access-Control-Allow-Origin so
-  // browser fetches across the redirect failed with TypeError: Failed to fetch).
-  // Same-origin proxy keeps the CDN cache benefit while making fetch() work.
+  // ── public JSON: pure pass-through proxy to Bunny CDN. NO DB. NO redirect.
+  // Bunny doesn't send Access-Control-Allow-Origin, so we proxy server-side
+  // and serve same-origin JSON to the browser. CDN cache benefit preserved
+  // via s-maxage; cache-bust on edit handled by the publish-to-bunny cron
+  // overwriting the JSON in place (no client-side ?v= needed).
   app.get('/api/articles', async (_req, res) => {
     try {
-      const v = await _indexVersion();
-      const buster = v ? `?v=${v}` : '';
-      const upstream = await fetch(`${SITE.bunnyPullZone}/articles/index.json${buster}`);
+      const upstream = await fetch(`${SITE.bunnyPullZone}/articles/index.json`);
       if (!upstream.ok) {
         return res.status(502).json({ error: 'upstream', status: upstream.status });
       }
       const body = await upstream.text();
-      res.set('Cache-Control', 'public, max-age=120, s-maxage=300');
+      res.set('Cache-Control', 'public, max-age=60, s-maxage=300');
       res.set('Content-Type', 'application/json; charset=utf-8');
       res.set('Access-Control-Allow-Origin', '*');
       res.send(body);
@@ -337,13 +336,11 @@ export function registerSiteRoutes(app) {
     }
   });
 
-  // ── public JSON: single article. Same server-side-proxy treatment.
+  // ── public JSON: single article. Pure pass-through proxy. 404 maps from Bunny.
   app.get('/api/articles/:slug', async (req, res) => {
     try {
-      const v = await _slugVersion(req.params.slug);
-      if (!v) return res.status(404).json({ error: 'not-found' });
       const upstream = await fetch(
-        `${SITE.bunnyPullZone}/articles/${encodeURIComponent(req.params.slug)}.json?v=${v}`,
+        `${SITE.bunnyPullZone}/articles/${encodeURIComponent(req.params.slug)}.json`,
       );
       if (!upstream.ok) {
         return res.status(upstream.status).json({ error: 'upstream', status: upstream.status });
