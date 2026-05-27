@@ -165,3 +165,15 @@
 - [x] Upload OG images to Bunny CDN
 - [x] Add ogImage column to articles, populate, wire og:image + twitter:image meta on article detail
 - [x] Verify, run vitest, commit + push to peacefulgeek/veteran-crisis, save checkpoint
+
+## Round 11: Railway hardening (9 lived lessons)
+- [ ] Lesson 1: Force Railpack builder (not Nixpacks → Caddy injection)
+- [ ] Lesson 2: Verify patches/ dir is COPYed before pnpm install in any Dockerfile (or delete Dockerfile)
+- [ ] Lesson 3: Pin pnpm to exact version (10.4.1) — match packageManager field
+- [ ] Lesson 4: Add uncaughtException + unhandledRejection + httpServer.on('error') as the first lines of server entry
+- [ ] Lesson 5: Default PORT to 8080 if env unset (Railway-aligned), still respect $PORT
+- [ ] Lesson 6: Remove healthcheck from railway.json (synchronous boot can exceed 300s timeout)
+- [ ] Lesson 7: Ensure no Dockerfile + startCommand conflict (pick one — Railpack + startCommand)
+- [ ] Lesson 8: No stale Dockerfile in repo to confuse Railway cache
+- [ ] Lesson 9: DEPLOY doc covers DNS recreation step for custom domain
+- [ ] Run vitest, build, push, checkpoint

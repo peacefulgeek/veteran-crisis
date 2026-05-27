@@ -227,7 +227,9 @@ describe("§25 — Railway deploy artifacts", () => {
   it("railway.json points start at pnpm start and health at /health", () => {
     const r = JSON.parse(readFileSync("railway.json", "utf-8"));
     expect(r.deploy.startCommand).toBe("pnpm start");
-    expect(r.deploy.healthcheckPath).toBe("/health");
+    // §28/L6: healthcheck intentionally omitted to avoid 30s slow-boot kills
+    expect(r.deploy.healthcheckPath).toBeUndefined();
+    expect(r.build.builder).toBe("RAILPACK");
     expect(r.build.buildCommand).toMatch(/pnpm install.*pnpm build/);
   });
 
@@ -244,7 +246,7 @@ describe("§25 — Railway deploy artifacts", () => {
   it("server binds 0.0.0.0 and uses $PORT directly when set", () => {
     const idx = readFileSync("server/_core/index.ts", "utf-8");
     expect(idx).toMatch(/server\.listen\(port,\s*"0\.0\.0\.0"/);
-    expect(idx).toMatch(/process\.env\.PORT \? preferredPort/);
+    expect(idx).toMatch(/envPort !== null/);
   });
 });
 
@@ -306,5 +308,59 @@ describe("§27 — ADMIN_KEY gates /api/cron-status", () => {
     expect(handler![0]).toContain("process.env.ADMIN_KEY");
     expect(handler![0]).toMatch(/x-admin-key|X-Admin-Key/i);
     expect(handler![0]).toMatch(/401/);
+  });
+});
+
+describe("§28 — Railway 9-lesson hardening", () => {
+  const railwayJson = JSON.parse(readFileSync("railway.json", "utf-8"));
+  const entry = readFileSync("server/_core/index.ts", "utf-8");
+  const pkg = JSON.parse(readFileSync("package.json", "utf-8"));
+  const deploy = readFileSync("DEPLOY-RAILWAY.md", "utf-8");
+
+  // Lesson 1
+  it("L1: railway.json builder is RAILPACK (not NIXPACKS, no Caddy injection)", () => {
+    expect(railwayJson.build.builder).toBe("RAILPACK");
+  });
+  // Lesson 3
+  it("L3: package.json pins packageManager to exact pnpm version with SHA", () => {
+    expect(pkg.packageManager).toMatch(/^pnpm@10\.4\.1\+sha512\./);
+  });
+  // Lesson 4
+  it("L4a: server entry registers uncaughtException handler at top", () => {
+    expect(entry).toMatch(/process\.on\(['"]uncaughtException['"]/);
+  });
+  it("L4b: server entry registers unhandledRejection handler", () => {
+    expect(entry).toMatch(/process\.on\(['"]unhandledRejection['"]/);
+  });
+  it("L4c: server entry handles httpServer.on('error')", () => {
+    expect(entry).toMatch(/server\.on\(['"]error['"]/);
+  });
+  it("L4d: startServer().catch logs [fatal] startServer rejected", () => {
+    expect(entry).toMatch(/\[fatal\] startServer rejected/);
+  });
+  // Lesson 5
+  it("L5: production default port is 8080, not 3000 or 10000", () => {
+    expect(entry).toMatch(/NODE_ENV === ['"]production['"][\s\S]{0,200}8080/);
+  });
+  // Lesson 6
+  it("L6: railway.json does NOT set healthcheckPath/Timeout (avoids 30s slow-boot kill)", () => {
+    expect(railwayJson.deploy.healthcheckPath).toBeUndefined();
+    expect(railwayJson.deploy.healthcheckTimeout).toBeUndefined();
+  });
+  // Lesson 7+8: no Dockerfile in repo
+  it("L7+L8: no Dockerfile in repo (avoids startCommand/CMD ambiguity + stale cache)", () => {
+    const fs = require("fs");
+    expect(fs.existsSync("Dockerfile")).toBe(false);
+    expect(fs.existsSync("Dockerfile.prod")).toBe(false);
+  });
+  // Lesson 9
+  it("L9: DEPLOY doc documents the DNS-recreation step", () => {
+    expect(deploy).toMatch(/delete (the )?existing DNS records[\s\S]*?recreate/i);
+  });
+  // Doc coverage
+  it("DEPLOY doc references all 9 lessons by number", () => {
+    for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9]) {
+      expect(deploy).toMatch(new RegExp(`Lesson ${n}[\\s\\S]*?\\u2014`, "i"));
+    }
   });
 });
