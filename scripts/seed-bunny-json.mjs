@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Standalone seeder: pushes ALL 500 articles to Bunny CDN as JSON.
+// Standalone seeder: pushes PUBLISHED articles to Bunny CDN as JSON.
 // - articles/index.json       → published only (public API redirects here)
-// - articles/{slug}.json      → one file per article, all 500
+// - articles/{slug}.json      → one file per PUBLISHED article (queued slugs are NEVER uploaded — see Round 15 security fix)
 // - feeds/sitemap.xml         → published only
 // - feeds/feed.xml            → top 30 published
 import { getConn } from '../server/lib/articles-db.mjs';
@@ -42,11 +42,12 @@ console.log('[seed-bunny]   →', await putJsonToBunny('articles/index.json', in
 // 1b. Admin all-index removed (Round 14): never publish total/byStatus to a public CDN.
 //     Admins query MySQL directly for queue overview.
 
-// 2. Per-article JSON for ALL 500 — parallel upload
+// 2. Per-article JSON — PUBLISHED ONLY. Uploading queued/draft slugs would let
+//    crawlers and any visitor enumerate the unfinished pipeline (library leak).
 let perOk = 0;
 let perFail = 0;
 const CONCURRENCY = 10;
-const queue = [...decoratedAll];
+const queue = [...decorated];
 const total = queue.length;
 await Promise.all(Array.from({ length: CONCURRENCY }, async (_, workerId) => {
   while (queue.length) {
@@ -82,7 +83,7 @@ const sitemapXml = [
   '</urlset>',
 ].join('\n');
 console.log('[seed-bunny] uploading feeds/sitemap.xml ...');
-console.log('[seed-bunny]   →', await putToBunny('feeds/sitemap.xml', sitemapXml, 'application/xml; charset=utf-8'));
+console.log('[seed-bunny]   →', await putToBunny('feeds/sitemap.xml', sitemapXml, 'application/xml; charset=utf-8', 'public, max-age=300'));
 
 // 4. feed.xml (top 30 published)
 const top30 = decorated.slice(0, 30);
@@ -97,7 +98,7 @@ const items = top30.map(r => {
 }).join('\n');
 const feedXml = ['<?xml version="1.0" encoding="UTF-8"?>', '<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom">', '<channel>', `<title>${escape(SITE.name)}</title>`, `<link>${escape(SITE.baseUrl)}</link>`, `<atom:link href="${escape(SITE.baseUrl)}/feed.xml" rel="self" type="application/rss+xml" />`, `<description>${escape(SITE.oneLine || '')}</description>`, '<language>en-us</language>', `<lastBuildDate>${rfc822(newest || Date.now())}</lastBuildDate>`, '<generator>Veteran Crisis Editorial Engine</generator>', items, '</channel>', '</rss>'].join('\n');
 console.log('[seed-bunny] uploading feeds/feed.xml ...');
-console.log('[seed-bunny]   →', await putToBunny('feeds/feed.xml', feedXml, 'application/rss+xml; charset=utf-8'));
+console.log('[seed-bunny]   →', await putToBunny('feeds/feed.xml', feedXml, 'application/rss+xml; charset=utf-8', 'public, max-age=300'));
 
 await conn.end();
 console.log(`[seed-bunny] done in ${((Date.now() - t0) / 1000).toFixed(1)}s — per-article ok=${perOk}/${total}, fail=${perFail}, byStatus=${JSON.stringify(byStatus)}`);

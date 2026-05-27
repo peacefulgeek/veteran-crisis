@@ -150,12 +150,14 @@ export const HERO_COUNT = HERO_LIBRARY.length;
 //      await putToBunny('feeds/sitemap.xml', xml, 'application/xml');
 //      const json = await getJsonFromBunny('articles/index.json');
 
-export async function putToBunny(relPath, body, contentType = 'application/octet-stream') {
+export async function putToBunny(relPath, body, contentType = 'application/octet-stream', _cacheControl) {
   if (!BUNNY_API_KEY || BUNNY_API_KEY.startsWith('PLACEHOLDER')) {
     throw new Error('[bunny] BUNNY_API_KEY missing or placeholder');
   }
   const cleanPath = String(relPath).replace(/^\/+/, '');
   const uploadUrl = `https://${BUNNY_HOSTNAME}/${BUNNY_STORAGE_ZONE}/${cleanPath}`;
+  // Note: edge Cache-Control is governed by the Bunny PULL ZONE settings,
+  // not by Storage Zone PUT headers. The 4th arg is accepted but advisory only.
   const res = await fetch(uploadUrl, {
     method: 'PUT',
     headers: { AccessKey: BUNNY_API_KEY, 'Content-Type': contentType },
@@ -168,8 +170,8 @@ export async function putToBunny(relPath, body, contentType = 'application/octet
   return `${BUNNY_PULL_ZONE}/${cleanPath}`;
 }
 
-export async function putJsonToBunny(relPath, obj) {
-  return putToBunny(relPath, JSON.stringify(obj), 'application/json; charset=utf-8');
+export async function putJsonToBunny(relPath, obj, cacheControl = 'public, max-age=300') {
+  return putToBunny(relPath, JSON.stringify(obj), 'application/json; charset=utf-8', cacheControl);
 }
 
 export async function getFromBunny(relPath) {
@@ -185,4 +187,22 @@ export async function getJsonFromBunny(relPath) {
   const res = await getFromBunny(relPath);
   if (!res) return null;
   return res.json();
+}
+
+export async function deleteFromBunny(relPath) {
+  if (!BUNNY_API_KEY || BUNNY_API_KEY.startsWith('PLACEHOLDER')) {
+    throw new Error('[bunny] BUNNY_API_KEY missing or placeholder');
+  }
+  const cleanPath = String(relPath).replace(/^\/+/, '');
+  const url = `https://${BUNNY_HOSTNAME}/${BUNNY_STORAGE_ZONE}/${cleanPath}`;
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: { AccessKey: BUNNY_API_KEY },
+  });
+  // Bunny returns 200 on success, 404 if missing — both are fine for our purge use case.
+  if (!res.ok && res.status !== 404) {
+    const txt = await res.text().catch(() => '');
+    throw new Error(`[bunny] DELETE ${cleanPath} → ${res.status} ${txt}`);
+  }
+  return res.status;
 }

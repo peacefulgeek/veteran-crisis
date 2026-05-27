@@ -15,8 +15,11 @@ process.on("unhandledRejection", (reason) => {
   setTimeout(() => process.exit(1), 100);
 });
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-// Manus-specific OAuth + /manus-storage proxy removed: app now runs purely on GitHub + Railway + Bunny.
-// Auth (if needed in the future) will use a simple ADMIN_KEY env var; assets are served direct from Bunny CDN.
+// Vendor OAuth and storage proxy were removed in Round 15: this app now runs
+// purely on GitHub + Railway + Bunny CDN, with no third-party identity or
+// storage shim layered between Express and the public routes.
+// Auth (if needed in the future) will use a simple ADMIN_KEY env var; assets
+// are served directly from Bunny CDN.
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";

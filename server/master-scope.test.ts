@@ -369,9 +369,9 @@ describe("§28 — Railway 9-lesson hardening", () => {
 
 // ─────────── Round 12: 500 articles on Bunny + env wiring ───────────
 
-describe("§29 — publish-to-bunny writes ALL 500 articles (every status)", () => {
+describe("§29 — publish-to-bunny writes only PUBLISHED articles to public CDN", () => {
   const src = readFileSync("server/lib/cron-jobs.mjs", "utf-8");
-  it("SELECTs without WHERE status filter so all statuses included", () => {
+  it("SELECTs all statuses (filtering happens in JS, not in SQL)", () => {
     const m = src.match(/runPublishToBunny[\s\S]*?SELECT[\s\S]{1,500}?FROM articles[\s\S]{0,300}?ORDER BY/);
     expect(m, "expected publish-to-bunny SELECT block").toBeTruthy();
     expect(m![0]).not.toMatch(/WHERE\s+status\s*=\s*'published'/);
@@ -380,8 +380,11 @@ describe("§29 — publish-to-bunny writes ALL 500 articles (every status)", () 
     expect(src).toMatch(/putJsonToBunny\(\s*['"`]articles\/index\.json['"`]/);
     expect(src).not.toMatch(/putJsonToBunny\(\s*['"`]articles\/all-index\.json['"`]/);
   });
-  it("per-article loop iterates over decoratedAll (all 500), not just published", () => {
-    expect(src).toMatch(/queue\s*=\s*\[\.\.\.decoratedAll\]|for[\s\S]{0,40}?decoratedAll/);
+  it("per-article upload queue is published-only (NEVER decoratedAll — that was the Round 15 leak)", () => {
+    // The fixed code must use `queue = [...decorated]` (published-only),
+    // and must NOT use `[...decoratedAll]` for the per-article upload loop.
+    expect(src).toMatch(/queue\s*=\s*\[\.\.\.decorated\]/);
+    expect(src).not.toMatch(/queue\s*=\s*\[\.\.\.decoratedAll\]/);
   });
 });
 

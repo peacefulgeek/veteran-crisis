@@ -55,7 +55,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values.role = user.role;
       updateSet.role = user.role;
     }
-    // De-Manus: no OWNER_OPEN_ID auto-admin promotion; site has no OAuth/users.
+    // Round 15: no vendor-owner auto-admin promotion; site has no OAuth/users.
 
     if (!values.lastSignedIn) {
       values.lastSignedIn = new Date();

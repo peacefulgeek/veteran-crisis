@@ -120,11 +120,13 @@ async function runPublishToBunny() {
     // (Round 14) Admin all-index removed: never publish total/byStatus library size to a public CDN.
     // Admins query MySQL directly when they need the queue overview.
 
-    // 2. Per-article JSON for ALL 500 (used by /api/articles/:slug for published,
-    //    and by future admin tooling for queued). Parallel-uploaded for speed.
+    // 2. Per-article JSON — PUBLISHED ONLY. Queued slugs MUST NOT be uploaded
+    // to the public CDN: that would let crawlers and any visitor enumerate the
+    // queue, leaking library size and unfinished drafts. Admin tooling must
+    // query MySQL directly for queued content (Round 15 security fix).
     let perOk = 0;
     const CONCURRENCY = 8;
-    const queue = [...decoratedAll];
+    const queue = [...decorated];
     await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
       while (queue.length) {
         const r = queue.shift();
@@ -154,7 +156,7 @@ async function runPublishToBunny() {
       }),
       '</urlset>',
     ].join('\n');
-    await putToBunny('feeds/sitemap.xml', sitemapXml, 'application/xml; charset=utf-8');
+    await putToBunny('feeds/sitemap.xml', sitemapXml, 'application/xml; charset=utf-8', 'public, max-age=300');
 
     // 4. feed.xml (RSS 2.0, top 30)
     const top30 = decorated.slice(0, 30);
@@ -168,9 +170,9 @@ async function runPublishToBunny() {
       return ['<item>', `<title>${escape(r.title)}</title>`, `<link>${escape(url)}</link>`, `<guid isPermaLink="true">${escape(url)}</guid>`, `<pubDate>${rfc822(r.publishedAt)}</pubDate>`, `<atom:updated>${new Date(r.lastModifiedAt || r.publishedAt || Date.now()).toISOString()}</atom:updated>`, `<dc:creator>${escape(r.author || SITE.author)}</dc:creator>`, r.category ? `<category>${escape(r.category)}</category>` : '', `<description>${cdata(r.metaDescription || '')}</description>`, `<content:encoded>${cdata(r.body || '')}</content:encoded>`, enclosure, '</item>'].filter(Boolean).join('');
     }).join('\n');
     const feedXml = ['<?xml version="1.0" encoding="UTF-8"?>', '<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom">', '<channel>', `<title>${escape(SITE.name)}</title>`, `<link>${escape(SITE.baseUrl)}</link>`, `<atom:link href="${escape(SITE.baseUrl)}/feed.xml" rel="self" type="application/rss+xml" />`, `<description>${escape(SITE.oneLine || '')}</description>`, '<language>en-us</language>', `<lastBuildDate>${rfc822(newest || Date.now())}</lastBuildDate>`, '<generator>Veteran Crisis Editorial Engine</generator>', items, '</channel>', '</rss>'].join('\n');
-    await putToBunny('feeds/feed.xml', feedXml, 'application/rss+xml; charset=utf-8');
+    await putToBunny('feeds/feed.xml', feedXml, 'application/rss+xml; charset=utf-8', 'public, max-age=300');
 
-    await logRun(conn, 'publish-to-bunny', 'ok', `pub-index(${decorated.length})+${perOk}/${decoratedAll.length} per-article+sitemap+feed`);
+    await logRun(conn, 'publish-to-bunny', 'ok', `pub-index(${decorated.length})+${perOk}/${decorated.length} per-article(published-only)+sitemap+feed`);
   } catch (e) {
     await logRun(conn, 'publish-to-bunny', 'error', String(e.stack || e.message || e));
   } finally { await conn.end(); }

@@ -196,19 +196,19 @@
 - [x] 54/54 vitest pass, pushed a2f2b0f to peacefulgeek/veteran-crisis main
 
 ## Round 15: Full top-to-bottom audit + defect fix
-- [ ] Static: tsc --noEmit clean (0 errors)
-- [ ] Static: pnpm build clean (no warnings beyond size hints)
-- [ ] Static: pnpm test all green
-- [ ] Static: dead-imports scan (no unresolved imports or references to removed modules)
-- [ ] Runtime: server boots fresh, all 6 crons register, /health returns 200
-- [ ] Runtime: every public route returns expected status (200/302/404 — no 500s)
-- [ ] Runtime: every script in scripts/ either runs or is obviously broken in a documented way
-- [ ] Security: no secrets in repo other than Bunny defaults (which were already public)
-- [ ] Security: ADMIN_KEY gating actually works on /api/cron-status
-- [ ] Security: no PII or queued slugs leak in /api/articles, /sitemap.xml, /feed.xml
-- [ ] De-Manus: 0 references to manus-storage, registerOAuthRoutes, registerStorageProxy, vite-plugin-manus-runtime, BUILT_IN_FORGE_API, OAUTH_SERVER_URL, OWNER_OPEN_ID, OWNER_NAME, VITE_APP_ID, VITE_OAUTH_PORTAL_URL in runtime source
-- [ ] De-Manus: dead Manus _core files removed or quarantined
-- [ ] Push + checkpoint with a real defect-list summary
+- [x] Static: tsc --noEmit clean (0 errors)
+- [x] Static: pnpm build clean (no warnings beyond size hints)
+- [x] Static: pnpm test all green (53/53)
+- [x] Static: dead-imports scan (no unresolved imports or references to removed modules)
+- [x] Runtime: server boots fresh, all 6 crons register, /health returns 200
+- [x] Runtime: every public route returns expected status (200/302/404 — no 500s)
+- [x] Runtime: every script in scripts/ either runs or is obviously broken in a documented way
+- [x] Security: no secrets in repo other than Bunny defaults (which were already public)
+- [x] Security: ADMIN_KEY gating actually works on /api/cron-status (conditional gate; only active when env var is set)
+- [x] Security: no PII or queued slugs leak in /api/articles, /sitemap.xml, /feed.xml (per-article queued JSONs purged from Bunny storage origin; cron + seed both fixed to upload published-only)
+- [x] De-Manus: 0 references to manus-storage, registerOAuthRoutes, registerStorageProxy, vite-plugin-manus-runtime, BUILT_IN_FORGE_API, OAUTH_SERVER_URL, OWNER_OPEN_ID, OWNER_NAME, VITE_APP_ID, VITE_OAUTH_PORTAL_URL in runtime source
+- [x] De-Manus: dead Manus _core files removed or quarantined
+- [x] Push + checkpoint with a real defect-list summary
 
 ## Round 15 — Full de-Manus audit (complete)
 - [x] Replaced server/_core/sdk.ts with no-op stub (no OAuth, no module-load HTTP, no console noise)
@@ -223,3 +223,23 @@
 - [x] package.json: removed vite-plugin-manus-runtime devDep, removed redundant `pnpm` self-devDep, removed @types/google.maps (Map.tsx deleted)
 - [x] vitest: 53/53 passing (auth.logout 1, master-scope 52)
 - [x] Production build clean: dist/index.js 183.5 kB, dist/public/assets/index-*.js 750 kB
+
+## Round 15 — security audit (queued-leak fix)
+- [x] Static: tsc --noEmit clean (0 errors)
+- [x] Static: pnpm build clean (dist/index.js 183.6 kB; chunk-size warning is the same shadcn-ui warning we've had since day 1)
+- [x] Static: pnpm test all green (53/53)
+- [x] Static: dead-imports scan — 0 unresolved imports against removed _core/notification, _core/llm, _core/oauth, _core/storage, etc.
+- [x] Runtime: server boots fresh, all 6 crons register (top-up, publish, sitemap-ping, asin-health, health-beacon, publish-to-bunny), /health returns 200
+- [x] Runtime: every public route returns expected status — /health=200, /api/articles=302→Bunny, /sitemap.xml=302→Bunny, /feed.xml=302→Bunny, /robots.txt=200, /llms.txt=200, /api/articles/<missing>=302→Bunny→404 (Bunny origin returns 404 for missing slug JSON)
+- [x] Runtime: scripts/seed-bunny-json.mjs runs end-to-end (33 published JSONs uploaded, sitemap + feed + index)
+- [x] Runtime: scripts/purge-bunny-queued-jsons.mjs runs end-to-end (467 queued JSONs deleted from Bunny storage origin)
+- [x] Security: no secrets in repo other than Bunny defaults (which are only the storage AccessKey for veteran-crisis storage zone — public CDN read is open by design)
+- [x] Security: ADMIN_KEY gating works on /api/cron-status (gate is conditional on env: when ADMIN_KEY set, requires X-Admin-Key header or ?key= query; in dev with no ADMIN_KEY the endpoint is open by design)
+- [x] Security: queued slugs no longer leak via /api/articles, /sitemap.xml, /feed.xml, OR per-slug Bunny JSON (CRITICAL FIX — `cron-jobs.mjs` and `seed-bunny-json.mjs` now use `[...decorated]` not `[...decoratedAll]` for per-article upload queue; 467 already-leaked JSONs deleted from Bunny storage origin)
+- [x] De-Manus: 0 references to manus-storage, registerOAuthRoutes, registerStorageProxy, vite-plugin-manus-runtime, BUILT_IN_FORGE_API, OAUTH_SERVER_URL, OWNER_OPE
+N_ID, OWNER_NAME, VITE_APP_ID, VITE_OAUTH_PORTAL_URL in runtime source
+- [x] De-Manus: dead Manus _core files removed (oauth, dataApi, imageGeneration, map, storageProxy, voiceTranscription, llm, notification, server/storage)
+- [x] Push + checkpoint with full defect-list summary
+
+## Round 15 — known residual (not blocking)
+- [ ] (Manual / Bunny dashboard or Account API Key required) Edge-cache purge for the 467 already-cached queued slug URLs. Bunny pull-zone Cache-Control is `public, max-age=2592000` and the Storage-Zone PUT does not honor `Override-Cache-Control` (that only works on user-origin Pull Zones). Storage origin is clean (queued JSONs deleted), so any expired or fresh edge fetch returns 404. To purge immediately, either lower the Pull Zone "Cache Expiration Time" in Bunny dash or supply a `BUNNY_ACCOUNT_API_KEY` and run a per-URL `https://api.bunny.net/purge?url=<URL>` loop.
