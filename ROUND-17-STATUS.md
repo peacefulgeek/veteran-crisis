@@ -35,14 +35,25 @@ The Veteran Crisis (veterancrisis.com) has completed the BacklinkWebsites Final 
 | Manus dependencies | VERIFIED CLEAN | None in runtime code |
 | Amazon affiliate tag | VERIFIED | `spankyspinola-20` enforced in `site-config.mjs`; quality gate accepts `/dp/` and `/s?k=` |
 
-## Deferred (low-priority, not blocking)
+## Round 17 — follow-up pass (also complete)
 
-| Item | Reason |
+| Item | Status |
 |------|--------|
-| HowTo JSON-LD on instructional articles | Deferred — adds value but requires per-article step structure detection; current Article + BreadcrumbList + FAQPage is sufficient for AEO |
-| AboutPage JSON-LD on `/about` | Deferred — page needs content audit first |
-| CollectionPage + ItemList JSON-LD on `/articles` | Deferred — index page already crawl-friendly via sitemap |
-| Person JSON-LD on `/author/the-oracle-lover` | Deferred — author URL already linked in Article JSON-LD `author.url` |
+| HowTo JSON-LD on instructional articles | FIXED — client-side detector emits HowTo + HowToStep when an article body contains `<ol>` with ≥3 `<li>` items, or 3+ `<h2|h3>Step N...</h2|h3>` sections |
+| AboutPage JSON-LD on `/about` | FIXED — emits AboutPage with `mainEntity.Organization.knowsAbout` |
+| CollectionPage + ItemList JSON-LD on `/articles` | FIXED — emits CollectionPage with `mainEntity.ItemList` of all published articles, capped at 100 |
+| Person JSON-LD on `/author/the-oracle-lover` | VERIFIED — already present with `knowsAbout` + `sameAs` linking to theoraclelover.com |
+
+## Tests added
+
+`server/master-scope.test.ts` §§34 — 5 new tests covering:
+- robots.txt mentions all 25 named AI crawlers
+- About.tsx contains AboutPage JSON-LD with Organization mainEntity
+- Articles.tsx contains CollectionPage + ItemList
+- Author.tsx contains Person JSON-LD with knowsAbout + sameAs
+- ArticleDetail.tsx emits HowTo + HowToStep
+
+Final: 61/61 vitest passing.
 
 ## Live URLs validated
 

@@ -1,10 +1,45 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { SiteShell } from "@/components/SiteChrome";
 import { useArticles, formatDate } from "@/lib/articles";
 
 export default function Articles() {
   const { data, loading } = useArticles(120);
+
+  // CollectionPage + ItemList JSON-LD covering the published library.
+  // Refreshes whenever the article list changes — but only one <script> tag.
+  const collectionJsonLd = useMemo(() => {
+    const items = (data || []).slice(0, 100).map((a, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: `https://veterancrisis.com/articles/${a.slug}`,
+      name: a.title,
+    }));
+    return {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      name: "The Veteran Crisis library",
+      url: "https://veterancrisis.com/articles",
+      description:
+        "Long-form essays and guides on military-to-civilian transition: identity, VA benefits, careers, families, money, mental health.",
+      inLanguage: "en-US",
+      isPartOf: {
+        "@type": "WebSite",
+        name: "Veteran Crisis",
+        url: "https://veterancrisis.com",
+      },
+      mainEntity: {
+        "@type": "ItemList",
+        name: "Veteran Crisis articles",
+        numberOfItems: (data || []).length,
+        itemListElement: items,
+      },
+    };
+  }, [data]);
+
+  useEffect(() => {
+    document.title = "The library | Veteran Crisis";
+  }, []);
   const [filter, setFilter] = useState<string>("All");
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -15,6 +50,10 @@ export default function Articles() {
 
   return (
     <SiteShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }}
+      />
       <section className="max-w-6xl mx-auto px-6 md:px-10 pt-24 pb-12">
         <p className="text-xs uppercase tracking-[0.32em] text-[#6B7A3C] mb-3">The library</p>
         <h1 className="font-serif text-4xl md:text-5xl text-[#1A2018] leading-tight">

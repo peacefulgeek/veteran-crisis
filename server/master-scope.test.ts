@@ -498,3 +498,77 @@ describe("§33 — live-CDN regression: queued slugs do not leak via public Bunn
     20_000,
   );
 });
+
+describe("§34 — Round 17 AEO discoverability completeness", () => {
+  it("robots.txt allow-lists at least 25 named AI/social crawlers", () => {
+    const app: any = makeApp();
+    registerSiteRoutes(app);
+    const handler = app.routes.find((r: any) => r.path === "/robots.txt").handler;
+    const req = fakeReq("veterancrisis.com", "/robots.txt");
+    const res = fakeRes();
+    handler(req, res);
+    const expectedBots = [
+      "GPTBot", "ClaudeBot", "Claude-Web", "PerplexityBot", "Google-Extended",
+      "OAI-SearchBot", "ChatGPT-User", "anthropic-ai", "cohere-ai", "Applebot",
+      "Applebot-Extended", "Bytespider", "CCBot", "Diffbot", "FacebookBot",
+      "facebookexternalhit", "ImagesiftBot", "meta-externalagent",
+      "Meta-ExternalFetcher", "Omgilibot", "PetalBot", "Scrapy", "Timpibot",
+      "YouBot", "Amazonbot",
+    ];
+    for (const bot of expectedBots) {
+      expect(res.body, `robots.txt should mention ${bot}`).toContain(bot);
+    }
+  });
+
+  it("About page source contains AboutPage JSON-LD with mainEntity Organization", () => {
+    const src = readFileSync(
+      new URL("../client/src/pages/About.tsx", import.meta.url).pathname,
+      "utf-8",
+    );
+    expect(src).toMatch(/"@type":\s*"AboutPage"/);
+    expect(src).toMatch(/mainEntity[\s\S]*"@type":\s*"Organization"/);
+  });
+
+  it("Articles page source contains CollectionPage + ItemList JSON-LD", () => {
+    const src = readFileSync(
+      new URL("../client/src/pages/Articles.tsx", import.meta.url).pathname,
+      "utf-8",
+    );
+    expect(src).toMatch(/"@type":\s*"CollectionPage"/);
+    expect(src).toMatch(/"@type":\s*"ItemList"/);
+    expect(src).toMatch(/itemListElement/);
+  });
+
+  it("Author page source contains Person JSON-LD with knowsAbout + sameAs", () => {
+    const src = readFileSync(
+      new URL("../client/src/pages/Author.tsx", import.meta.url).pathname,
+      "utf-8",
+    );
+    expect(src).toMatch(/"@type":\s*"Person"/);
+    expect(src).toMatch(/knowsAbout/);
+    expect(src).toMatch(/sameAs/);
+  });
+
+  it("ArticleDetail emits HowTo JSON-LD when ordered steps are detected", () => {
+    const src = readFileSync(
+      new URL("../client/src/pages/ArticleDetail.tsx", import.meta.url).pathname,
+      "utf-8",
+    );
+    expect(src).toMatch(/['"]@type['"]:\s*['"]HowTo['"]/);
+    expect(src).toMatch(/HowToStep/);
+  });
+});
+
+// Helper for §34 robots test — minimal Express-shaped app harness
+function makeApp(): any {
+  const routes: any[] = [];
+  return {
+    routes,
+    get(path: string, handler: any) {
+      routes.push({ path, handler });
+    },
+    post() {},
+    use() {},
+    head() {},
+  };
+}

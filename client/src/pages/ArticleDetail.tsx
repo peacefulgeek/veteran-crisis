@@ -161,10 +161,68 @@ export default function ArticleDetail() {
       }
     }
 
+    // HowTo JSON-LD: emit when body contains a clear ordered step list. Triggers:
+    //   1) <ol>...<li> with >= 3 items
+    //   2) H2/H3 starting with "Step N" or "Step N:" with >= 3 occurrences
+    // Mutually exclusive with FAQ-only signals; emitted independently of FAQ.
+    const howId = 'jsonld-howto';
+    const oldHow = document.getElementById(howId);
+    if (oldHow) oldHow.remove();
+    let steps: Array<{ name: string; text: string }> = [];
+    const olMatch = a.body.match(/<ol[^>]*>([\s\S]*?)<\/ol>/i);
+    if (olMatch) {
+      const liRe = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+      let m;
+      const items: string[] = [];
+      while ((m = liRe.exec(olMatch[1])) !== null) {
+        const t = m[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        if (t) items.push(t);
+      }
+      if (items.length >= 3) {
+        steps = items.map((t, i) => ({
+          name: `Step ${i + 1}`,
+          text: t.length > 500 ? t.slice(0, 497) + '...' : t,
+        }));
+      }
+    }
+    if (steps.length === 0) {
+      const stepHeads: Array<{ name: string; text: string }> = [];
+      const stepRe = /<h[23][^>]*>\s*Step\s+\d+[:.\s][^<]*<\/h[23]>([\s\S]*?)(?=<h[23]|$)/gi;
+      let m;
+      while ((m = stepRe.exec(a.body)) !== null) {
+        const headMatch = m[0].match(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/i);
+        const head = headMatch ? headMatch[1].replace(/<[^>]+>/g, '').trim() : '';
+        const txt = m[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        if (head && txt) stepHeads.push({ name: head, text: txt.slice(0, 500) });
+      }
+      if (stepHeads.length >= 3) steps = stepHeads;
+    }
+    if (steps.length >= 3) {
+      const how = document.createElement('script');
+      how.id = howId;
+      how.type = 'application/ld+json';
+      how.textContent = JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'HowTo',
+        name: a.title,
+        description: desc,
+        totalTime: 'PT15M',
+        step: steps.map((s, i) => ({
+          '@type': 'HowToStep',
+          position: i + 1,
+          name: s.name,
+          text: s.text,
+        })),
+      });
+      document.head.appendChild(how);
+    }
+
     return () => {
       document.title = orig;
       const stale = document.getElementById(ldId);
       if (stale) stale.remove();
+      const staleHow = document.getElementById(howId);
+      if (staleHow) staleHow.remove();
     };
   }, [a?.slug, a?.title, a?.metaDescription, (a as any)?.ogImage, a?.heroUrl, a?.publishedAt, a?.lastModifiedAt, a?.author]);
 

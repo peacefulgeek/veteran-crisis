@@ -4,9 +4,52 @@ import { SiteShell } from "@/components/SiteChrome";
 const HERO =
   "https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1920&q=80";
 
+const ABOUT_JSONLD = {
+  "@context": "https://schema.org",
+  "@type": "AboutPage",
+  name: "About Veteran Crisis",
+  url: "https://veterancrisis.com/about",
+  description:
+    "Veteran Crisis is plain-language writing for veterans, military spouses, and the families who walk the long return home with them. Why this exists and how to use it.",
+  inLanguage: "en-US",
+  isPartOf: {
+    "@type": "WebSite",
+    name: "Veteran Crisis",
+    url: "https://veterancrisis.com",
+  },
+  publisher: {
+    "@type": "Organization",
+    name: "Veteran Crisis",
+    url: "https://veterancrisis.com",
+    logo: {
+      "@type": "ImageObject",
+      url: "https://veteran-crisis.b-cdn.net/brand/veteran-crisis-logo.webp",
+    },
+  },
+  mainEntity: {
+    "@type": "Organization",
+    name: "Veteran Crisis",
+    url: "https://veterancrisis.com",
+    description:
+      "Long-form, plain-language writing on military-to-civilian transition: identity, the VA, careers, family, money, mental health.",
+    foundingDate: "2025",
+    knowsAbout: [
+      "Veteran transition",
+      "VA benefits",
+      "PTSD and moral injury",
+      "Military spouses",
+      "Civilian career translation",
+    ],
+  },
+};
+
 export default function About() {
   return (
     <SiteShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(ABOUT_JSONLD) }}
+      />
       <section className="relative h-[58vh] flex items-end overflow-hidden">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${HERO})` }} />
         <div className="absolute inset-0 bg-gradient-to-t from-[#1A2018]/90 via-[#1A2018]/55 to-[#1A2018]/15" />

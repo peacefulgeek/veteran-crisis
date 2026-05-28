@@ -289,10 +289,10 @@ N_ID, OWNER_NAME, VITE_APP_ID, VITE_OAUTH_PORTAL_URL in runtime source
 - [x] BreadcrumbList JSON-LD per article
 - [x] FAQPage JSON-LD auto-extracted from H2/H3 questions when present
 - [x] WebSite + Organization JSON-LD in client/index.html
-- [ ] HowTo JSON-LD (deferred - low-priority)
-- [ ] AboutPage + Organization JSON-LD on /about (deferred)
-- [ ] CollectionPage + ItemList JSON-LD on /articles (deferred)
-- [ ] Person JSON-LD on /author (deferred)
+- [x] HowTo JSON-LD on articles with ordered steps (>=3 li or Step-N H2/H3)
+- [x] AboutPage + Organization JSON-LD on /about
+- [x] CollectionPage + ItemList JSON-LD on /articles
+- [x] Person JSON-LD on /author/the-oracle-lover (was already present)
 - [x] /sitemap.xml - every published article, lastmod ISO-8601, newest first
 - [x] /robots.txt - 25 AI crawlers allow-listed
 - [x] /llms.txt - markdown index grouped by category
