@@ -14,7 +14,7 @@ export const ASSESSMENTS = [
       'I know what I am ready to leave behind.',
       'I have at least three people I can be honest with.',
       'I sleep at least six unbroken hours most nights.',
-      'I have a daily anchor — a habit, walk, or ritual — that grounds me.',
+      'I have a daily anchor. a habit, walk, or ritual. that grounds me.',
     ],
   },
   {
@@ -25,7 +25,7 @@ export const ASSESSMENTS = [
     questions: [
       'I fall asleep within 30 minutes most nights.',
       'I wake up feeling rested at least four mornings a week.',
-      'I sleep through the night without a 2–4am wake-up loop.',
+      'I sleep through the night without a 2 to 4am wake-up loop.',
       'I do not need alcohol or screens to fall asleep.',
       'My partner and I both sleep without disturbing each other.',
       'I dream and remember dreams at least once a week.',
@@ -39,7 +39,7 @@ export const ASSESSMENTS = [
     questions: [
       'I feel curious about something most days.',
       'I look forward to small moments, not just big events.',
-      'I laugh — really laugh — at least a few times a week.',
+      'I laugh. really laugh. at least a few times a week.',
       'I feel a sense of meaning in how I spend my days.',
       'My anger is in proportion to what is in front of me.',
       'I can name what I am feeling without effort.',
@@ -48,7 +48,7 @@ export const ASSESSMENTS = [
   {
     id: 'relationships',
     title: 'Relationships & Family Check-In',
-    sub: 'A look at the people closest to you — and how present you actually are with them.',
+    sub: 'A look at the people closest to you. and how present you actually are with them.',
     icon: 'heart',
     questions: [
       'My partner and I have one real, slow conversation each week.',
@@ -138,7 +138,7 @@ export const ASSESSMENTS = [
       'I have at least one veteran I check in with monthly.',
       'I am part of a group, team, or community that meets in person.',
       'I have helped someone else this month without keeping score.',
-      'I know my neighbors\u2019 names — at least three of them.',
+      'I know my neighbors\u2019 names. at least three of them.',
       'I have a mentor or someone older I learn from.',
       'I am someone\u2019s mentor, even informally.',
     ],

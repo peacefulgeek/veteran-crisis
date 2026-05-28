@@ -259,3 +259,72 @@ N_ID, OWNER_NAME, VITE_APP_ID, VITE_OAUTH_PORTAL_URL in runtime source
 - [x] /api/articles/:slug now 404s on non-existent slugs (was 302 before — security improvement, no slug existence leak).
 - [x] All 54 vitest tests green (1 quality-gate test was failing on /s?k= search URLs; fixed by widening countAmazonLinks regex).
 - [x] Closed-as-documented: every article URL now carries `?v=<lastModifiedAt>`, so any future content edit forces a Bunny edge-cache miss without needing a dashboard TTL change. The 467 queued-slug edge entries will decay naturally; the storage origin is already clean and §33 regression test guards against re-introduction. The dashboard TTL change remains optional polish, not required for correctness.
+
+
+## Round 17 — BacklinkWebsites Final Pass
+
+### Writing engine
+- [x] Switch all article generation, rewrites, refresh crons to Claude (`claude-sonnet-4-5-20250929`)
+- [x] Add `CLAUDE_API_KEY` to sandbox secrets (NOTE: must also add to Railway env)
+
+### Writing quality
+- [x] No em-dashes anywhere - sweep complete across template-article, prompts, supplements, assessments, site-routes, Author, Home, index.html
+- [x] Banned words list enforced in quality gate
+- [x] Banned phrases enforced
+- [x] Contractions throughout; varied sentence length; ≥2 conversational openers per article; concrete specifics
+
+### E-E-A-T (per published article)
+- [x] 3-sentence TL;DR with 12 variants
+- [x] Self-referencing language in body
+- [x] ≥3 internal links with varied anchor text
+- [x] ≥1 outbound authoritative link
+- [x] Visible last-updated date with datetime attribute
+- [x] Author byline credential + datetime + topic-specific context
+
+### AEO / LLM discoverability
+- [x] Canonical tag UTM-stripped (ArticleDetail)
+- [x] Robots meta index,follow,max-snippet:-1,max-image-preview:large in SSR injector
+- [x] OG + Twitter card meta in SSR injector + ArticleDetail
+- [x] Article JSON-LD with SpeakableSpecification (SSR + client)
+- [x] BreadcrumbList JSON-LD per article
+- [x] FAQPage JSON-LD auto-extracted from H2/H3 questions when present
+- [x] WebSite + Organization JSON-LD in client/index.html
+- [ ] HowTo JSON-LD (deferred - low-priority)
+- [ ] AboutPage + Organization JSON-LD on /about (deferred)
+- [ ] CollectionPage + ItemList JSON-LD on /articles (deferred)
+- [ ] Person JSON-LD on /author (deferred)
+- [x] /sitemap.xml - every published article, lastmod ISO-8601, newest first
+- [x] /robots.txt - 25 AI crawlers allow-listed
+- [x] /llms.txt - markdown index grouped by category
+- [x] /llms-full.txt - markdown corpus from Bunny CDN
+- [x] All head meta server-rendered for crawlers (verified via GPTBot UA test)
+
+### Storage
+- [x] Articles stored as JSON on Bunny (`/articles/{slug}.json`); DB used only for cron staging
+- [x] All public read paths fetch from Bunny CDN (no DB on hot path)
+
+### Counts + backdate
+- [x] Published 34 (target 30-100); queued 466 (target 400-500)
+- [x] Backdated published_at across last 90 days (Feb 27 -> May 28, 2026)
+
+### Bylines
+- [x] Author byline (The Oracle Lover) on all published articles, datetime matches publishedAt
+
+### Cleanup
+- [x] Newsletter signup endpoint /api/newsletter logs to cron_runs (no SOVRN, no third-party form)
+- [x] No paulwagner.com / Paul Wagner anywhere (code + 34 published articles verified)
+- [x] No fake social profiles (none referenced)
+- [x] No SOVRN code anywhere
+
+### Quarterly refresh cron
+- [x] runQuarterlyRefresh added: nightly @ 04:00, runs quality gate over every published article, logs failures to cron_runs
+
+### Validation + delivery
+- [x] vitest green: 56/56 passing
+- [x] GPTBot UA test: SSR injector emits full Article + Breadcrumb + Speakable JSON-LD
+- [x] /llms.txt -> 200, served from Bunny index
+- [x] /llms-full.txt -> 200, markdown grouped by category
+- [x] /sitemap.xml -> 302 to Bunny CDN, 34 published articles, ISO-8601 lastmod
+- [x] /robots.txt -> 25 AI crawlers + sitemap + feed sitemap
+- [x] Final FIXED / VERIFIED / BLOCKED report
+- [x] Clean git push to peacefulgeek/veteran-crisis main

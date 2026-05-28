@@ -258,7 +258,7 @@ export default function Home() {
             "The only veteran-facing site I have read that does not try to sell me a course.
             It just tells the truth, slowly, and trusts me to do the work."
           </p>
-          <p className="mt-6 text-sm uppercase tracking-widest text-[#C9B27A]">— A reader, USMC '04–'12</p>
+          <p className="mt-6 text-sm uppercase tracking-widest text-[#C9B27A]">A reader, USMC, 2004 to 2012</p>
         </div>
       </section>
 

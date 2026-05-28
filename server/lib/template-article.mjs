@@ -261,10 +261,10 @@ export function generateTemplateArticle(ctx) {
   }
 
   // Pick 10 sections so total body always lands at 1,800+ words (master scope §12).
-  // We have ~14 sections in the bank — picking 10 keeps variety while guaranteeing length.
+  // We have ~14 sections in the bank. picking 10 keeps variety while guaranteeing length.
   const sections = pickN(SECTION_BANK, 10, rng);
 
-  // TL;DR — picks one of 12 different opener variants per slug so the
+  // TL;DR. picks one of 12 different opener variants per slug so the
   // first paragraph reads differently in every article. All variants are warm,
   // encouraging, and grounded in the same voice (no boilerplate).
   const TLDR_VARIANTS = [
@@ -354,7 +354,7 @@ ${tldrInner}
   // Author bio mid-article (after section 4 - per per-site scope: 4th or 5th section)
   const sectionsArr = sectionsHtml.split('<h2>').filter(Boolean);
   const midIdx = Math.min(4, sectionsArr.length - 1);
-  // Mid-article author note: every single article gets a 2–3 sentence
+  // Mid-article author note: every single article gets a 2 to 3 sentence
   // TheOracleLover.com byline with TWO direct links, one wrapping the author
   // name and one wrapping a varied editorial anchor. The varied anchor cycles
   // through 12 natural phrases so the link profile reads as organic, not
@@ -389,7 +389,7 @@ ${tldrInner}
   sectionsArr.splice(midIdx + 1, 0, bioCard.replace(/^/g, '') + '\n');
   const sectionsWithBio = sectionsArr.map((s, i) => (i === midIdx + 1 ? s : '<h2>' + s)).join('');
 
-  // Veteran Transition Library — same Amazon-search switch as supplements:
+  // Veteran Transition Library. same Amazon-search switch as supplements:
   // /s?k=<query>&tag=... never 404s, always converts, affiliate tag preserved.
   const productLeadIns = [
     'One option that helps with this is',

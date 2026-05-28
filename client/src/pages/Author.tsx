@@ -33,7 +33,7 @@ const JSONLD = {
 
 export default function Author() {
   useEffect(() => {
-    document.title = "The Oracle Lover — Author at Veteran Crisis";
+    document.title = "The Oracle Lover | Author at Veteran Crisis";
   }, []);
 
   return (
@@ -144,7 +144,7 @@ export default function Author() {
           </p>
 
           <p className="author-signoff">
-            — The Oracle Lover<br />
+            The Oracle Lover<br />
             <span className="muted">Writer and editor, Veteran Crisis</span>
           </p>
         </article>

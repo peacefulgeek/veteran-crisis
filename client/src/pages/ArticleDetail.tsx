@@ -40,7 +40,11 @@ export default function ArticleDetail() {
     const ogImg = (a as any).ogImage || a.heroUrl || `${SITE}/og-default.webp`;
     const desc = (a.metaDescription || a.title || '').slice(0, 240);
     const orig = document.title;
-    document.title = `${a.title} — Veteran Crisis`;
+    document.title = `${a.title} | Veteran Crisis`;
+
+    // Canonical: strip UTM/fbclid/gclid/mc_eid from current URL, keep only the slug path.
+    // Per master scope §15: canonical never contains tracking params.
+    const canonical = url; // already constructed without query string
 
     const upsertMeta = (selector: string, attrs: Record<string, string>) => {
       let el = document.head.querySelector(selector) as HTMLMetaElement | null;
@@ -86,6 +90,7 @@ export default function ArticleDetail() {
       ld.type = 'application/ld+json';
       document.head.appendChild(ld);
     }
+    // Article schema with SpeakableSpecification (voice-assistant-friendly)
     ld.textContent = JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'Article',
@@ -95,9 +100,66 @@ export default function ArticleDetail() {
       datePublished: a.publishedAt,
       dateModified: a.lastModifiedAt || a.publishedAt,
       author: { '@type': 'Person', name: a.author || 'The Oracle Lover', url: `${SITE}/author/the-oracle-lover` },
-      publisher: { '@type': 'Organization', name: 'Veteran Crisis', url: SITE },
-      mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+      publisher: { '@type': 'Organization', name: 'Veteran Crisis', url: SITE, '@id': `${SITE}/#org` },
+      mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
+      isAccessibleForFree: true,
+      speakable: {
+        '@type': 'SpeakableSpecification',
+        cssSelector: ['h1', '.prose-tldr', '.article-body h2', '.article-body p:first-of-type'],
+      },
     });
+
+    // BreadcrumbList JSON-LD (separate <script> tag so search engines parse it cleanly)
+    const bcId = 'jsonld-breadcrumbs';
+    let bc = document.getElementById(bcId) as HTMLScriptElement | null;
+    if (!bc) {
+      bc = document.createElement('script');
+      bc.id = bcId;
+      bc.type = 'application/ld+json';
+      document.head.appendChild(bc);
+    }
+    bc.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: SITE },
+        { '@type': 'ListItem', position: 2, name: 'Articles', item: `${SITE}/articles` },
+        { '@type': 'ListItem', position: 3, name: a.title, item: canonical },
+      ],
+    });
+
+    // FAQPage extraction: if body contains an h2 named "FAQ" or "Frequently Asked Questions",
+    // pull each h3+p pair into a FAQPage. Defensive: only emit if >=2 Q/A pairs found.
+    const faqId = 'jsonld-faq';
+    const old = document.getElementById(faqId);
+    if (old) old.remove();
+    const faqMatch = a.body.match(/<h2[^>]*>(?:FAQ|Frequently Asked Questions)[^<]*<\/h2>([\s\S]*?)(?=<h2|$)/i);
+    if (faqMatch) {
+      const block = faqMatch[1];
+      const qaRe = /<h3[^>]*>([^<]+)<\/h3>\s*([\s\S]*?)(?=<h3|$)/gi;
+      const qa: Array<{ q: string; a: string }> = [];
+      let m;
+      while ((m = qaRe.exec(block)) !== null) {
+        const q = m[1].replace(/<[^>]+>/g, '').trim();
+        const ans = m[2].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        if (q && ans) qa.push({ q, a: ans });
+      }
+      if (qa.length >= 2) {
+        const faq = document.createElement('script');
+        faq.id = faqId;
+        faq.type = 'application/ld+json';
+        faq.textContent = JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          mainEntity: qa.map(({ q, a: ans }) => ({
+            '@type': 'Question',
+            name: q,
+            acceptedAnswer: { '@type': 'Answer', text: ans },
+          })),
+        });
+        document.head.appendChild(faq);
+      }
+    }
 
     return () => {
       document.title = orig;

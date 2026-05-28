@@ -2,7 +2,7 @@ import { SITE, VOICE, RESEARCHERS, AUTH_SOURCES } from './site-config.mjs';
 import { AI_FLAGGED_WORDS, AI_FLAGGED_PHRASES } from './article-quality-gate.mjs';
 
 export function buildVoiceSpecPrompt() {
-  return `VOICE SPEC — The Oracle Lover (this site: ${SITE.name})
+  return `VOICE SPEC. The Oracle Lover (this site: ${SITE.name})
 ${VOICE.guide}
 
 NICHE MODIFIER:
@@ -45,11 +45,11 @@ export function buildHardRulesPrompt({ products = [], internalLinks = [], today,
     ? internalLinks
         .map(l => `- /articles/${l.slug} \u2014 anchor like "${l.title}" or a varied phrase`)
         .join('\n')
-    : '- (none yet — invent up to 3 plausible internal slugs from this site\u2019s niche, e.g. /articles/identity-after-discharge, /articles/va-disability-101, /articles/civilian-resume-translation)';
+    : '- (none yet. invent up to 3 plausible internal slugs from this site\u2019s niche, e.g. /articles/identity-after-discharge, /articles/va-disability-101, /articles/civilian-resume-translation)';
 
   const ext = externalSource || AUTH_SOURCES[Math.floor(Math.random() * AUTH_SOURCES.length)];
 
-  return `HARD RULES (zero tolerance — failing any rule means the article will be rejected):
+  return `HARD RULES (zero tolerance. failing any rule means the article will be rejected):
 - Length: 1,200 to 2,500 words. Target 1,800 to 2,000.
 - No em-dashes (\u2014) and no en-dashes (\u2013). Use periods or commas.
 - Never use these words (case-insensitive): ${AI_FLAGGED_WORDS.join(', ')}.

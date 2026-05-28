@@ -214,6 +214,42 @@ async function runHealthBeacon() {
   finally { await conn.end(); }
 }
 
+// Quarterly refresh: walk every PUBLISHED article through the quality gate to
+// catch any drift introduced by gate hardening over time. Articles that fail
+// the gate get a 'needs-refresh' flag in cron_runs.detail so the operator (or
+// a future top-up worker) can regenerate them via the Claude-first writer.
+// Runs once per day at 04:00 — "quarterly" in editorial intent, not in cron
+// frequency: cheap enough to run nightly, fail-fast on first issue.
+async function runQuarterlyRefresh() {
+  const conn = await getConn();
+  try {
+    const [rows] = await conn.query(
+      `SELECT id, slug, title, body, metaDescription FROM articles WHERE status='published'`,
+    );
+    let pass = 0;
+    let fail = 0;
+    const failures = [];
+    for (const r of rows) {
+      const result = runQualityGate(r.body || '');
+      if (result && result.failures && result.failures.length === 0) {
+        pass++;
+      } else {
+        fail++;
+        const fl = (result?.failures || ['unknown-failure']).slice(0, 2).join('|');
+        failures.push(`${r.slug}:${fl}`);
+      }
+    }
+    const detail =
+      `pass=${pass} fail=${fail}` +
+      (failures.length ? ` first-failures=${failures.slice(0, 5).join(';').slice(0, 400)}` : '');
+    await logRun(conn, 'quarterly-refresh', fail === 0 ? 'ok' : 'partial', detail);
+  } catch (e) {
+    await logRun(conn, 'quarterly-refresh', 'error', String(e.message || e));
+  } finally {
+    await conn.end();
+  }
+}
+
 export function startCrons({ enabled } = {}) {
   // Default ON. Only AUTO_GEN_ENABLED="false" disables.
   const explicitlyOff = process.env.AUTO_GEN_ENABLED === 'false';
@@ -228,10 +264,12 @@ export function startCrons({ enabled } = {}) {
   cron.schedule('*/30 * * * *', () => runHealthBeacon().catch(console.error), { timezone: TZ });
   // Refresh Bunny-cached JSON/XML every 6 hours (in addition to post-publish run).
   cron.schedule('15 */6 * * *', () => runPublishToBunny().catch(console.error), { timezone: TZ });
+  // Quarterly refresh: nightly quality-gate sweep over every published article.
+  cron.schedule('0 4 * * *', () => runQuarterlyRefresh().catch(console.error), { timezone: TZ });
   // Boot-time health beacon + initial Bunny push so the CDN is in sync after a Railway redeploy.
   setTimeout(() => runHealthBeacon().catch(console.error), 5_000);
   setTimeout(() => runPublishToBunny().catch(console.error), 10_000);
-  console.log('[cron] 6 crons scheduled (top-up, publish, sitemap-ping, asin-health, health-beacon, publish-to-bunny)');
+  console.log('[cron] 7 crons scheduled (top-up, publish, sitemap-ping, asin-health, health-beacon, publish-to-bunny, quarterly-refresh)');
 }
 
-export const _internal = { runTopUpQueue, runPublishOne, runSitemapPing, runAsinHealthCheck, runHealthBeacon, runPublishToBunny };
+export const _internal = { runTopUpQueue, runPublishOne, runSitemapPing, runAsinHealthCheck, runHealthBeacon, runPublishToBunny, runQuarterlyRefresh };

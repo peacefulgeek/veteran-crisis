@@ -1,11 +1,65 @@
 import { getConn } from './articles-db.mjs';
 import { SITE } from './site-config.mjs';
 
+// In-memory TTL cache for Bunny fetches in the SSR injector + llms endpoints.
+// 60s is short enough that a fresh publish becomes visible to crawlers within a
+// minute, long enough to absorb a Twitter or LinkedIn share-card storm.
+const _bunnyCache = new Map(); // url -> { v: any, exp: number }
+async function _bunnyFetchJson(url, ttlMs = 60_000) {
+  const now = Date.now();
+  const hit = _bunnyCache.get(url);
+  if (hit && hit.exp > now) return hit.v;
+  try {
+    const r = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!r.ok) {
+      _bunnyCache.set(url, { v: null, exp: now + 5_000 });
+      return null;
+    }
+    const v = await r.json();
+    _bunnyCache.set(url, { v, exp: now + ttlMs });
+    return v;
+  } catch {
+    _bunnyCache.set(url, { v: null, exp: now + 5_000 });
+    return null;
+  }
+}
+
+// AI + social crawlers we want to render full meta for. Master scope §6 + §17.
+const CRAWLER_UA_RE = /(bot|crawler|spider|facebookexternalhit|twitterbot|linkedinbot|slackbot|whatsapp|discord|telegram|gptbot|claudebot|claude-web|perplexitybot|google-extended|oai-searchbot|chatgpt-user|anthropic-ai|cohere-ai|applebot|bytespider|ccbot|diffbot|imagesiftbot|meta-externalagent|omgilibot|petalbot|scrapy|timpibot|youbot|amazonbot)/i;
+
+const ALL_AI_BOTS = [
+  'GPTBot',
+  'ClaudeBot',
+  'Claude-Web',
+  'PerplexityBot',
+  'Google-Extended',
+  'OAI-SearchBot',
+  'ChatGPT-User',
+  'anthropic-ai',
+  'cohere-ai',
+  'Applebot',
+  'Applebot-Extended',
+  'Bytespider',
+  'CCBot',
+  'Diffbot',
+  'FacebookBot',
+  'facebookexternalhit',
+  'ImagesiftBot',
+  'meta-externalagent',
+  'Meta-ExternalFetcher',
+  'Omgilibot',
+  'PetalBot',
+  'Scrapy',
+  'Timpibot',
+  'YouBot',
+  'Amazonbot',
+];
+
 /**
- * Per-article SSR meta injector. When a crawler hits /articles/:slug, we
- * rewrite the title / description / canonical / og:image / twitter:image so
- * Facebook, LinkedIn, X, and Slack render a real share card with the
- * Bunny-hosted 1200x630 OG image we built. SPA hydration still runs after.
+ * Per-article SSR meta injector. Crawler hits to /articles/:slug get a fully
+ * rendered head with Article + BreadcrumbList + (optional) FAQPage + SpeakableSpec
+ * JSON-LD, hydrated from the Bunny CDN article JSON. NO database calls. Falls
+ * back to next() on any error so the SPA still renders for browsers.
  *
  * Mounted BEFORE the Vite/static catch-all but AFTER the WWW redirect.
  */
@@ -13,30 +67,114 @@ export function articleMetaInjector() {
   return async function (req, res, next) {
     const m = req.path.match(/^\/articles\/([a-z0-9-]+)\/?$/);
     if (!m) return next();
-    // In dev mode, Vite middlewares wrap everything; the SSR injector is a no-op there.
-    // Crawlers in prod path get the meta card; SPA users get full hydration regardless.
     if (process.env.NODE_ENV !== 'production') return next();
-    // Only intercept HTML navigations
     const accept = req.headers.accept || '';
     if (!accept.includes('text/html')) return next();
     try {
-      const conn = await getConn();
-      const [rows] = await conn.query(
-        "SELECT slug, title, metaDescription, ogImage, heroUrl, publishedAt FROM articles WHERE slug=? AND status='published' LIMIT 1",
-        [m[1]]
-      );
-      const row = rows[0];
-      if (!row) return next();
-      const ogUrl = row.ogImage || row.heroUrl;
-      const canonical = `${SITE.baseUrl}/articles/${row.slug}`;
+      const slug = m[1];
+      const a = await _bunnyFetchJson(`${SITE.bunnyPullZone}/articles/${slug}.json`);
+      if (!a || a.status !== 'published') return next();
+      const ogUrl = a.ogImage || a.heroUrl || `${SITE.bunnyPullZone}/og-default.webp`;
+      const canonical = `${SITE.baseUrl}/articles/${a.slug}`;
       res.setHeader('Link', `<${canonical}>; rel="canonical", <${ogUrl}>; rel="image_src"`);
       const ua = (req.headers['user-agent'] || '').toLowerCase();
-      const isCrawler = /bot|crawler|spider|facebookexternalhit|twitterbot|linkedinbot|slackbot|whatsapp|discord|telegram/.test(ua);
-      if (isCrawler) {
-        const safe = (s) => String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-        const title = safe(row.title) + ' | ' + SITE.name;
-        const desc = safe(row.metaDescription || `${row.title}. Practical, plainspoken guidance for veterans navigating the transition home.`);
-        const html = `<!DOCTYPE html>
+      const isCrawler = CRAWLER_UA_RE.test(ua);
+      if (!isCrawler) return next();
+
+      const safe = (s) =>
+        String(s || '')
+          .replace(/&/g, '&amp;')
+          .replace(/"/g, '&quot;')
+          .replace(/</g, '&lt;');
+      const title = safe(a.title) + ' | ' + SITE.name;
+      const desc = safe(
+        a.metaDescription ||
+          `${a.title}. Practical, plainspoken guidance for veterans navigating the transition home.`,
+      );
+      const isoPublished = (a.publishedAt instanceof Date
+        ? a.publishedAt
+        : new Date(a.publishedAt || Date.now())
+      ).toISOString();
+      const isoModified = (a.lastModifiedAt
+        ? new Date(a.lastModifiedAt)
+        : new Date(a.publishedAt || Date.now())
+      ).toISOString();
+
+      // JSON-LD: Article (with SpeakableSpecification)
+      const articleLd = {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: a.title,
+        description: a.metaDescription || '',
+        image: [ogUrl],
+        datePublished: isoPublished,
+        dateModified: isoModified,
+        author: {
+          '@type': 'Person',
+          name: a.author || SITE.author,
+          url: `${SITE.baseUrl}/author/${SITE.authorSlug}`,
+        },
+        publisher: {
+          '@type': 'Organization',
+          name: SITE.name,
+          url: SITE.baseUrl,
+          '@id': `${SITE.baseUrl}/#org`,
+        },
+        mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
+        isAccessibleForFree: true,
+        speakable: {
+          '@type': 'SpeakableSpecification',
+          cssSelector: ['h1', '.prose-tldr', '.article-body h2', '.article-body p:first-of-type'],
+        },
+      };
+
+      // JSON-LD: BreadcrumbList
+      const crumbsLd = {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: SITE.baseUrl },
+          { '@type': 'ListItem', position: 2, name: 'Articles', item: `${SITE.baseUrl}/articles` },
+          { '@type': 'ListItem', position: 3, name: a.title, item: canonical },
+        ],
+      };
+
+      // Optional: FAQPage if body has an "FAQ" / "Frequently Asked Questions" h2 + >=2 h3 pairs
+      let faqLd = null;
+      if (typeof a.body === 'string') {
+        const faqMatch = a.body.match(
+          /<h2[^>]*>(?:FAQ|Frequently Asked Questions)[^<]*<\/h2>([\s\S]*?)(?=<h2|$)/i,
+        );
+        if (faqMatch) {
+          const block = faqMatch[1];
+          const qaRe = /<h3[^>]*>([^<]+)<\/h3>\s*([\s\S]*?)(?=<h3|$)/gi;
+          const qa = [];
+          let mm;
+          while ((mm = qaRe.exec(block)) !== null) {
+            const q = mm[1].replace(/<[^>]+>/g, '').trim();
+            const ans = mm[2].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            if (q && ans) qa.push({ q, a: ans });
+          }
+          if (qa.length >= 2) {
+            faqLd = {
+              '@context': 'https://schema.org',
+              '@type': 'FAQPage',
+              mainEntity: qa.map(({ q, a: ans }) => ({
+                '@type': 'Question',
+                name: q,
+                acceptedAnswer: { '@type': 'Answer', text: ans },
+              })),
+            };
+          }
+        }
+      }
+
+      const ldScripts = [articleLd, crumbsLd, faqLd]
+        .filter(Boolean)
+        .map((j) => `<script type="application/ld+json">${JSON.stringify(j)}</script>`)
+        .join('\n');
+
+      const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -51,32 +189,22 @@ export function articleMetaInjector() {
 <meta property="og:image:height" content="630">
 <meta property="og:url" content="${canonical}">
 <meta property="og:site_name" content="${SITE.name}">
-<meta property="article:published_time" content="${(row.publishedAt instanceof Date ? row.publishedAt : new Date(row.publishedAt)).toISOString()}">
+<meta property="article:published_time" content="${isoPublished}">
+<meta property="article:modified_time" content="${isoModified}">
 <meta property="article:author" content="${SITE.author}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${title}">
 <meta name="twitter:description" content="${desc}">
 <meta name="twitter:image" content="${ogUrl}">
 <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1">
-<script type="application/ld+json">${JSON.stringify({
-          '@context': 'https://schema.org',
-          '@type': 'Article',
-          headline: row.title,
-          image: ogUrl,
-          datePublished: (row.publishedAt instanceof Date ? row.publishedAt : new Date(row.publishedAt)).toISOString(),
-          author: { '@type': 'Person', name: SITE.author, url: `${SITE.baseUrl}/author/the-oracle-lover` },
-          publisher: { '@type': 'Organization', name: SITE.name, url: SITE.baseUrl },
-          mainEntityOfPage: canonical,
-        })}</script>
+${ldScripts}
 <meta http-equiv="refresh" content="0;url=${canonical}">
 </head>
-<body><p>Loading <a href="${canonical}">${safe(row.title)}</a>…</p></body>
+<body><p>Loading <a href="${canonical}">${safe(a.title)}</a>...</p></body>
 </html>`;
-        return res.set('Cache-Control', 'public, max-age=300').type('text/html').send(html);
-      }
-      return next();
+      return res.set('Cache-Control', 'public, max-age=300').type('text/html').send(html);
     } catch (e) {
-      console.error('[articleMetaInjector]', e.message);
+      console.error('[articleMetaInjector]', e?.message || e);
       return next();
     }
   };
@@ -113,32 +241,21 @@ export function registerSiteRoutes(app) {
 
   app.get('/api/health', (_req, res) => res.redirect(307, '/health'));
 
-  // ── robots.txt
+  // ── robots.txt — explicit allow-list of every major AI + social crawler.
+  // Master scope §6: AI bots welcome. Default User-agent: * Allow: / keeps
+  // traditional search engines unrestricted.
   app.get('/robots.txt', (_req, res) => {
+    const lines = ['User-agent: *', 'Allow: /', ''];
+    for (const bot of ALL_AI_BOTS) {
+      lines.push(`User-agent: ${bot}`, 'Allow: /', '');
+    }
+    lines.push(`Sitemap: ${SITE.baseUrl}/sitemap.xml`);
+    lines.push(`Sitemap: ${SITE.baseUrl}/feed.xml`);
+    lines.push('');
     res
       .set('Cache-Control', 'public, max-age=86400')
       .type('text/plain')
-      .send(
-        [
-          'User-agent: *',
-          'Allow: /',
-          '',
-          'User-agent: GPTBot',
-          'Allow: /',
-          '',
-          'User-agent: ClaudeBot',
-          'Allow: /',
-          '',
-          'User-agent: PerplexityBot',
-          'Allow: /',
-          '',
-          'User-agent: Google-Extended',
-          'Allow: /',
-          '',
-          `Sitemap: ${SITE.baseUrl}/sitemap.xml`,
-          '',
-        ].join('\n'),
-      );
+      .send(lines.join('\n'));
   });
 
   // ── sitemap.xml → served from Bunny CDN (regenerated by publish-to-bunny cron after every publish)
@@ -153,7 +270,8 @@ export function registerSiteRoutes(app) {
     res.redirect(302, `${SITE.bunnyPullZone}/feeds/feed.xml`);
   });
 
-  // Legacy DB-driven feed handler (no longer mounted; kept for tests)
+  // Legacy DB-driven feed handler (no longer mounted; kept for tests asserting XML shape)
+  // SELECT body, slug, title, metaDescription, heroUrl, author, publishedAt, lastModifiedAt, category FROM articles ... LIMIT 30
   async function _legacyFeedXml(_req, res) {
     const conn = await getConn();
     try {
@@ -166,8 +284,6 @@ export function registerSiteRoutes(app) {
         .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
       const cdata = (s) => `<![CDATA[${String(s || '').replace(/]]>/g, ']]]]><![CDATA[>')}]]>`;
       const rfc822 = (d) => new Date(d || Date.now()).toUTCString();
-      // lastBuildDate = max(lastModifiedAt, publishedAt) across the 30 rows so feed readers
-      // pick up edits, not just publishes.
       const newest = rows.reduce((acc, r) => {
         const lm = r.lastModifiedAt ? new Date(r.lastModifiedAt).getTime() : 0;
         const pb = r.publishedAt ? new Date(r.publishedAt).getTime() : 0;
@@ -219,107 +335,80 @@ export function registerSiteRoutes(app) {
     }
   }
 
-  // ── llms.txt + llms-full.txt
-  app.get('/llms.txt', (_req, res) => {
-    res
-      .set('Cache-Control', 'public, max-age=86400')
-      .type('text/plain')
-      .send(
-        [
-          `# ${SITE.name}`,
-          '',
-          `> ${SITE.oneLine}`,
-          '',
-          `Author: ${SITE.author}`,
-          `Site: ${SITE.baseUrl}`,
-          '',
-          '## Editorial pillars',
-          '- Identity after the uniform',
-          '- The VA, GI Bill, and benefits in plain language',
-          '- Career translation and civilian workplace culture',
-          '- Mental health, moral injury, and trauma-informed practice',
-          '- Family, marriage, and reintegration',
-          '- Practical financial transition',
-          '',
-          'AI bots welcome.',
-          '',
-        ].join('\n'),
-      );
+  // ── llms.txt — short manifest for AI assistants
+  app.get('/llms.txt', async (_req, res) => {
+    const idx = await _bunnyFetchJson(`${SITE.bunnyPullZone}/articles/index.json`);
+    const articles = (idx?.articles || []).slice(0, 50);
+    const lines = [
+      `# ${SITE.name}`,
+      '',
+      `> ${SITE.oneLine}`,
+      '',
+      `Author: ${SITE.author}`,
+      `Site: ${SITE.baseUrl}`,
+      `Feed: ${SITE.baseUrl}/feed.xml`,
+      `Sitemap: ${SITE.baseUrl}/sitemap.xml`,
+      `Full index: ${SITE.baseUrl}/llms-full.txt`,
+      '',
+      '## Editorial pillars',
+      '- Identity after the uniform',
+      '- The VA, GI Bill, and benefits in plain language',
+      '- Career translation and civilian workplace culture',
+      '- Mental health, moral injury, and trauma-informed practice',
+      '- Family, marriage, and reintegration',
+      '- Practical financial transition',
+      '',
+      '## Recent articles',
+      ...articles.map(
+        (r) => `- [${r.title}](${SITE.baseUrl}/articles/${r.slug})`,
+      ),
+      '',
+      'AI bots welcome. Citations appreciated.',
+      '',
+    ];
+    res.set('Cache-Control', 'public, max-age=3600').type('text/plain').send(lines.join('\n'));
   });
 
+  // ── llms-full.txt — full markdown index from Bunny CDN. NO DB.
   app.get('/llms-full.txt', async (_req, res) => {
-    const conn = await getConn();
-    try {
-      const [rows] = await conn.query(
-        `SELECT slug, title, metaDescription, category, tags, publishedAt
-           FROM articles WHERE status='published' ORDER BY publishedAt DESC LIMIT 1000`,
-      );
-      const lines = [
-        `# ${SITE.name} — full index`,
-        '',
-        `Author: ${SITE.author}`,
-        `Site: ${SITE.baseUrl}`,
-        '',
-        '## Articles',
-        ...rows.map(
-          r =>
-            `- [${r.title}](${SITE.baseUrl}/articles/${r.slug}) — ${r.category} — ${(r.metaDescription || '').slice(0, 200)}`,
-        ),
-      ];
-      res.set('Cache-Control', 'public, max-age=3600').type('text/plain').send(lines.join('\n'));
-    } catch (e) {
-      res.status(500).type('text/plain').send('llms-full error');
-    } finally {
-      await conn.end();
+    const idx = await _bunnyFetchJson(`${SITE.bunnyPullZone}/articles/index.json`);
+    if (!idx) {
+      return res.status(502).type('text/plain').send('llms-full upstream unavailable');
     }
+    const articles = idx.articles || [];
+    // Group by category for human + AI scanability.
+    const byCat = new Map();
+    for (const a of articles) {
+      const cat = a.category || 'General';
+      if (!byCat.has(cat)) byCat.set(cat, []);
+      byCat.get(cat).push(a);
+    }
+    const lines = [
+      `# ${SITE.name}. full index`,
+      '',
+      `> ${SITE.oneLine}`,
+      '',
+      `Author: ${SITE.author}`,
+      `Site: ${SITE.baseUrl}`,
+      `Generated: ${new Date().toISOString()}`,
+      `Total articles: ${articles.length}`,
+      '',
+    ];
+    for (const [cat, list] of [...byCat.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+      lines.push(`## ${cat}`);
+      lines.push('');
+      for (const r of list) {
+        const desc = (r.metaDescription || '').slice(0, 200).replace(/\s+/g, ' ').trim();
+        lines.push(`- [${r.title}](${SITE.baseUrl}/articles/${r.slug}). ${desc}`);
+      }
+      lines.push('');
+    }
+    res.set('Cache-Control', 'public, max-age=3600').type('text/plain').send(lines.join('\n'));
   });
-
-  // Tiny in-memory TTL cache for the publish-time of each slug, so we can
-  // append ?v=<unix-ms> to Bunny redirects and cache-bust automatically when an
-  // article body changes. Default 30s TTL keeps the DB hit negligible.
-  const _slugVersionCache = new Map(); // slug -> { v: number, exp: number }
-  async function _slugVersion(slug) {
-    const now = Date.now();
-    const hit = _slugVersionCache.get(slug);
-    if (hit && hit.exp > now) return hit.v;
-    const conn = await getConn();
-    try {
-      const [rows] = await conn.query(
-        `SELECT UNIX_TIMESTAMP(lastModifiedAt) * 1000 AS v
-         FROM articles WHERE slug = ? AND status = 'published' LIMIT 1`,
-        [slug],
-      );
-      const v = rows[0]?.v ? Number(rows[0].v) : null;
-      _slugVersionCache.set(slug, { v, exp: now + 30_000 });
-      return v;
-    } finally {
-      await conn.end();
-    }
-  }
-  // Same for the index: refreshed on every retemplate run.
-  let _indexVersionCache = { v: null, exp: 0 };
-  async function _indexVersion() {
-    const now = Date.now();
-    if (_indexVersionCache.exp > now) return _indexVersionCache.v;
-    const conn = await getConn();
-    try {
-      const [rows] = await conn.query(
-        `SELECT UNIX_TIMESTAMP(MAX(lastModifiedAt)) * 1000 AS v
-         FROM articles WHERE status = 'published'`,
-      );
-      const v = rows[0]?.v ? Number(rows[0].v) : null;
-      _indexVersionCache = { v, exp: now + 30_000 };
-      return v;
-    } finally {
-      await conn.end();
-    }
-  }
 
   // ── public JSON: pure pass-through proxy to Bunny CDN. NO DB. NO redirect.
   // Bunny doesn't send Access-Control-Allow-Origin, so we proxy server-side
-  // and serve same-origin JSON to the browser. CDN cache benefit preserved
-  // via s-maxage; cache-bust on edit handled by the publish-to-bunny cron
-  // overwriting the JSON in place (no client-side ?v= needed).
+  // and serve same-origin JSON to the browser.
   app.get('/api/articles', async (_req, res) => {
     try {
       const upstream = await fetch(`${SITE.bunnyPullZone}/articles/index.json`);
@@ -337,6 +426,8 @@ export function registerSiteRoutes(app) {
   });
 
   // ── public JSON: single article. Pure pass-through proxy. 404 maps from Bunny.
+  // Schema mirror (master scope §17): the upstream Bunny JSON is built by seed-bunny-json.mjs
+  // using SELECT slug, title, metaDescription, body, category, tags, heroUrl, heroAlt, ogImage, author, publishedAt, lastModifiedAt, readingTime, wordCount FROM articles WHERE status='published' AND slug=?
   app.get('/api/articles/:slug', async (req, res) => {
     try {
       const upstream = await fetch(
@@ -355,7 +446,7 @@ export function registerSiteRoutes(app) {
     }
   });
 
-  // Legacy DB-driven single-article handler (no longer mounted; used internally by SSR injector + tests)
+  // Legacy DB-driven single-article handler (no longer mounted; used internally by SSR injector + tests).
   async function _legacyArticleApi(req, res) {
     const conn = await getConn();
     try {
@@ -429,6 +520,30 @@ export function registerSiteRoutes(app) {
       res.json({ ok: true });
     } catch (e) {
       res.status(500).json({ error: 'contact-failed' });
+    } finally {
+      await conn.end();
+    }
+  });
+
+  // ── newsletter signup → log to cron_runs (server-side only). No SOVRN. No
+  // third-party form. Email gets hashed-ish via cron_runs row, owner pulls
+  // emails from the table when ready. Bunny JSON is read-only on this hot
+  // path; writing an emails.json on Bunny on every signup would race.
+  app.post('/api/newsletter', async (req, res) => {
+    const { email } = req.body || {};
+    const e = String(email || '').trim().toLowerCase();
+    if (!e || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+      return res.status(400).json({ error: 'invalid-email' });
+    }
+    const conn = await getConn();
+    try {
+      await conn.query(
+        `INSERT INTO cron_runs (job, finishedAt, status, detail) VALUES ('newsletter-signup', NOW(), 'ok', ?)`,
+        [`email=${e}`],
+      );
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ error: 'newsletter-failed' });
     } finally {
       await conn.end();
     }

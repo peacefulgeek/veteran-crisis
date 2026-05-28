@@ -16,7 +16,7 @@ export function CrisisLineBar() {
       <div className="max-w-7xl mx-auto px-5 md:px-8 py-2 flex flex-col sm:flex-row items-center justify-between gap-1">
         <span className="flex items-center gap-2">
           <Phone size={14} className="text-[#C9B27A]" />
-          <span>If you are in crisis: dial <strong className="text-[#C9B27A]">988, then press 1</strong> — Veterans Crisis Line</span>
+          <span>If you are in crisis: dial <strong className="text-[#C9B27A]">988, then press 1</strong>. Veterans Crisis Line.</span>
         </span>
         <span className="hidden sm:inline text-[#F6F4EE]/60">Or text <strong className="text-[#C9B27A]">838255</strong></span>
       </div>

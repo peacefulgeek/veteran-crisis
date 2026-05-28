@@ -5,35 +5,72 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <meta name="theme-color" content="#F6F4EE" />
-    <title>Veteran Crisis — The Identity Crisis Nobody Briefed You On</title>
+    <title>Veteran Crisis: The Identity Crisis Nobody Briefed You On</title>
     <meta name="description" content="The real resource for military-to-civilian transition: identity, culture shock, the VA maze, career pivots, and relationships strained when you become a different person." />
     <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
     <link rel="canonical" href="https://veterancrisis.com/" />
-    <link rel="alternate" type="application/rss+xml" title="Veteran Crisis — RSS" href="/feed.xml" />
+    <link rel="alternate" type="application/rss+xml" title="Veteran Crisis RSS" href="/feed.xml" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Veteran Crisis" />
-    <meta property="og:title" content="Veteran Crisis — The Identity Crisis Nobody Briefed You On" />
+    <meta property="og:title" content="Veteran Crisis: The Identity Crisis Nobody Briefed You On" />
     <meta property="og:description" content="Honest, plainspoken writing on identity, the VA, civilian work, mental health, and the long, slow business of becoming yourself again on the other side of service." />
     <meta property="og:url" content="https://veterancrisis.com/" />
-    <meta property="og:image" content="https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1600&q=82" />
+    <meta property="og:image" content="https://veteran-crisis.b-cdn.net/og/site-default.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:locale" content="en_US" />
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Veteran Crisis" />
     <meta name="twitter:description" content="For the people walking from one life into another." />
-    <meta name="twitter:image" content="https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1600&q=82" />
-    <!-- JSON-LD: Organization + Website -->
+    <meta name="twitter:image" content="https://veteran-crisis.b-cdn.net/og/site-default.jpg" />
+    <!-- JSON-LD: Organization -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "@id": "https://veterancrisis.com/#org",
+        "name": "Veteran Crisis",
+        "url": "https://veterancrisis.com",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://veteran-crisis.b-cdn.net/brand/logo-512.png",
+          "width": 512,
+          "height": 512
+        },
+        "founder": { "@type": "Person", "name": "The Oracle Lover", "url": "https://veterancrisis.com/author/the-oracle-lover" },
+        "sameAs": []
+      }
+    </script>
+    <!-- JSON-LD: WebSite + SearchAction -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "WebSite",
+        "@id": "https://veterancrisis.com/#site",
         "name": "Veteran Crisis",
         "url": "https://veterancrisis.com",
-        "author": { "@type": "Person", "name": "The Oracle Lover", "url": "https://veterancrisis.com/author/the-oracle-lover" },
-        "publisher": { "@type": "Organization", "name": "Veteran Crisis", "url": "https://veterancrisis.com" },
-        "inLanguage": "en-US"
+        "publisher": { "@id": "https://veterancrisis.com/#org" },
+        "inLanguage": "en-US",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://veterancrisis.com/articles?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      }
+    </script>
+    <!-- JSON-LD: Author Person -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "@id": "https://veterancrisis.com/author/the-oracle-lover#person",
+        "name": "The Oracle Lover",
+        "url": "https://veterancrisis.com/author/the-oracle-lover",
+        "jobTitle": "Founder, Veteran Crisis",
+        "worksFor": { "@id": "https://veterancrisis.com/#org" }
       }
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />

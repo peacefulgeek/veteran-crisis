@@ -1,7 +1,7 @@
 // Supplements / Herbs / TCM catalog for veterans.
 // All ASINs are real, well-known products (verified format). Tagged with spankyspinola-20.
 // Categories specifically chosen to support sleep, mood, PTSD/trauma recovery,
-// inflammation, joints, focus, energy, anxiety, gut, cardio, hormones — the
+// inflammation, joints, focus, energy, anxiety, gut, cardio, hormones. the
 // stack veterans actually ask about.
 
 import { SITE } from './site-config.mjs';
@@ -32,7 +32,7 @@ function product(asin, name, blurb, category, imgIndex) {
     blurb,
     category,
     image: img(((imgIndex - 1) % 60) + 1),
-    // Amazon search URL with affiliate tag — never 404s, always converts.
+    // Amazon search URL with affiliate tag. never 404s, always converts.
     url: `https://www.amazon.com/s?k=${q}&tag=${SITE.amazonTag}`,
   };
 }
@@ -47,7 +47,7 @@ export const SUPPLEMENTS = [
     'A glass of warm magnesium citrate is the cheapest sleep upgrade in the catalog. Mix one teaspoon in hot water around 9pm and the nervous system actually downshifts. The raspberry-lemon flavor is the only one worth buying.',
     'Sleep', 2),
   product('B01HI5UAMC', 'Olly Sleep Gummies (Melatonin + L-Theanine + Chamomile)',
-    'For nights when your brain refuses to land. The 3mg melatonin dose is the right one — anything higher leaves you groggy. The L-theanine is what actually quiets the mental loop.',
+    'For nights when your brain refuses to land. The 3mg melatonin dose is the right one. anything higher leaves you groggy. The L-theanine is what actually quiets the mental loop.',
     'Sleep', 3),
   product('B07L9R5JZD', 'Now Foods L-Theanine 200mg',
     'L-theanine is green-tea\u2019s calming amino acid without any caffeine. Take it 30 minutes before bed and your shoulders drop without sedation. It pairs cleanly with magnesium for the deepest no-hangover sleep.',
@@ -69,7 +69,7 @@ export const SUPPLEMENTS = [
   product('B07Y29X9KK', 'Ashwagandha (KSM-66, 600mg, Nutricost)',
     'The single most-studied adaptogen for veteran-style chronic stress. KSM-66 is the form with the most clinical trials behind it. Two months of consistent use brings cortisol patterns back into a normal range.',
     'Anxiety', 9),
-  product('B003B3OOPA', 'Holy Basil (Tulsi) Capsules — Organic India',
+  product('B003B3OOPA', 'Holy Basil (Tulsi) Capsules. Organic India',
     'Tulsi is the gentlest adaptogen in the toolkit and you can take it every day for years. Calms the racing-thought layer without dulling reflexes. Especially helpful for the veteran with a 3pm anxiety spike.',
     'Anxiety', 10),
   product('B07PNL7DFS', 'Rhodiola Rosea (Now Foods, 500mg)',
@@ -122,7 +122,7 @@ export const SUPPLEMENTS = [
     'Ayurvedic herb that supports memory and emotional regulation simultaneously. Consistent eight-week use is what shifts the over-active threat-detection patterns. Take with breakfast for daytime calm.',
     'PTSD', 25),
   product('B074H5VKBT', 'Reishi Mushroom Powder (Host Defense)',
-    'Reishi is the calming mushroom in the TCM toolkit, used for "shen disturbance" — the Chinese name for what we now call PTSD. Slow, cumulative effect over six to eight weeks. Excellent in a small evening tea.',
+    'Reishi is the calming mushroom in the TCM toolkit, used for "shen disturbance". the Chinese name for what we now call PTSD. Slow, cumulative effect over six to eight weeks. Excellent in a small evening tea.',
     'PTSD', 26),
   product('B07R6JM5N5', 'Mucuna Pruriens (Nutricost L-DOPA)',
     'A natural source of L-DOPA, the dopamine precursor. Useful for the flat, numb register that follows long-term trauma. Cycle five days on, two off, to avoid receptor down-regulation.',
@@ -136,7 +136,7 @@ export const SUPPLEMENTS = [
 
   // ── FOCUS / COGNITION ────────────────────────────────────────────────
   product('B07K1MCDXC', 'Alpha-GPC 600mg (Double Wood)',
-    'A choline source the brain prefers for acetylcholine production — the focus neurotransmitter. Use on long task days, not every day. One capsule with breakfast and the brain finds traction.',
+    'A choline source the brain prefers for acetylcholine production. the focus neurotransmitter. Use on long task days, not every day. One capsule with breakfast and the brain finds traction.',
     'Focus', 30),
   product('B07F2YPV8X', 'Citicoline (Cognizin, 500mg)',
     'Cognizin is the patented citicoline form with the most clinical research behind it. Veterans coming off ADHD-style stimulants find this softens the rebound. Two capsules with breakfast, four days a week.',
@@ -185,7 +185,7 @@ export const SUPPLEMENTS = [
     'A bio-available sulfur compound for joint cartilage and connective tissue. Take with vitamin C for assembly. Three to four grams a day in water, six week trial.',
     'Inflammation', 44),
   product('B073WB3DQM', 'Glucosamine + Chondroitin (Kirkland)',
-    'The most-studied joint pair in over-50 athletes and combat-veteran populations. Effects are slow — give it three months. The Costco-brand version is the same molecule as the $80 bottles.',
+    'The most-studied joint pair in over-50 athletes and combat-veteran populations. Effects are slow. give it three months. The Costco-brand version is the same molecule as the $80 bottles.',
     'Inflammation', 45),
   product('B003VWUF6E', 'Collagen Peptides (Vital Proteins, 20oz)',
     'Type I + III collagen for skin, joints, and the gut lining. Tasteless, dissolves in coffee. Twenty grams a day is the dose with the strongest data behind it.',
@@ -222,7 +222,7 @@ export const SUPPLEMENTS = [
     'A holy-basil, ashwagandha, schisandra blend tuned for cortisol-pattern repair. Helpful for veterans whose energy never came back after a long tour. Three months of consistent use is the protocol.',
     'Hormones', 55),
   product('B073W9SBLY', 'Maca Black Root (Maca Team)',
-    'The black variety has the most research on male stamina. Two teaspoons before breakfast in oatmeal or a smoothie. Don\u2019t expect overnight effects — this works on the eight-week timeline.',
+    'The black variety has the most research on male stamina. Two teaspoons before breakfast in oatmeal or a smoothie. Don\u2019t expect overnight effects. this works on the eight-week timeline.',
     'Hormones', 56),
 
   // ── HEART / CIRCULATION / METABOLIC ──────────────────────────────────
@@ -253,7 +253,7 @@ export const SUPPLEMENTS = [
     'A combined qi-and-blood formula for total-body recovery. Used by TCM doctors after surgery, childbirth, and combat exhaustion. Long-term use is appropriate.',
     'TCM', 64),
   product('B003B3O6PK', 'Xiao Yao Wan (Free and Easy Wanderer)',
-    'The most-prescribed TCM formula for "stuck liver qi" — frustration, irritability, suppressed grief. Veterans often feel a chest unwind in two weeks. Eight pellets, three times daily, with warm water.',
+    'The most-prescribed TCM formula for "stuck liver qi". frustration, irritability, suppressed grief. Veterans often feel a chest unwind in two weeks. Eight pellets, three times daily, with warm water.',
     'TCM', 65),
   product('B073WH9SVX', 'Suan Zao Ren Tang (Sour Date Sleep Formula)',
     'The traditional TCM formula for the wired-and-tired insomnia of long stress. Take 90 minutes before bed. Pairs cleanly with Western magnesium without conflict.',
@@ -282,7 +282,7 @@ export const SUPPLEMENTS = [
     'The premier blood-moving herb in TCM. Especially indicated for women veterans with PMS-related mood crashes. Don\u2019t use during pregnancy.',
     'TCM', 73),
   product('B073WH4N2D', 'He Shou Wu (Polygonum Multiflorum)',
-    'Traditional TCM herb for kidney essence — the deep reserve depleted by long deployments. Eight to twelve weeks of consistent use. Pairs well with goji and reishi.',
+    'Traditional TCM herb for kidney essence. the deep reserve depleted by long deployments. Eight to twelve weeks of consistent use. Pairs well with goji and reishi.',
     'TCM', 74),
   product('B07PQ8L13K', 'Dong Quai Root Capsules (Frontier Co-op)',
     'A women-specific TCM staple for menstrual regularity and post-trauma recovery. Combine with white peony for the classic blood-building pair. Avoid during heavy menstruation.',
@@ -322,7 +322,7 @@ export const SUPPLEMENTS = [
     'A primary brain-cell building block. Useful for veterans with mild TBI history. Two grams daily for at least three months.',
     'Brain', 85),
   product('B07F12NYHF', 'PQQ (Doctor\u2019s Best, 20mg)',
-    'Stimulates new mitochondria — the cellular power plants. Pairs synergistically with CoQ10 for veterans on statins. One capsule with breakfast.',
+    'Stimulates new mitochondria. the cellular power plants. Pairs synergistically with CoQ10 for veterans on statins. One capsule with breakfast.',
     'Brain', 86),
 
   // ── METABOLISM / WEIGHT ──────────────────────────────────────────────
@@ -333,7 +333,7 @@ export const SUPPLEMENTS = [
     'For folks who can\u2019t handle the liquid. Take 15 minutes before lunch and dinner. Modestly slows post-meal glucose spikes.',
     'Metabolic', 88),
   product('B07KGN6KXP', 'Cinnamon Extract (Ceylon, Now Foods)',
-    'Ceylon, not cassia — coumarin levels matter for daily use. Real research on insulin sensitivity. Two capsules with breakfast.',
+    'Ceylon, not cassia. coumarin levels matter for daily use. Real research on insulin sensitivity. Two capsules with breakfast.',
     'Metabolic', 89),
   product('B003B3O8Z2', 'Bitter Melon (Nature\u2019s Way)',
     'A traditional blood-sugar herb in both Ayurvedic and TCM systems. Slow-acting; six weeks for meaningful effects. Don\u2019t combine with diabetes medication without monitoring.',
@@ -347,7 +347,7 @@ export const SUPPLEMENTS = [
     'Routes calcium to bones instead of arteries. The MK-7 form has a 72-hour half-life. One capsule with breakfast and a fat source.',
     'Bones', 92),
   product('B0019GW4D6', 'Biotin 5000mcg (Nature\u2019s Bounty)',
-    'Hair, skin, and nail support, particularly post-stress shedding. Three months to evaluate effect. Stop two weeks before any blood work — biotin can skew thyroid panels.',
+    'Hair, skin, and nail support, particularly post-stress shedding. Three months to evaluate effect. Stop two weeks before any blood work. biotin can skew thyroid panels.',
     'Skin', 93),
   product('B07JBQZHV1', 'Hyaluronic Acid + MSM (Doctor\u2019s Best)',
     'Joint-and-skin hydration combination. Useful for the over-40 veteran whose knees and skin both feel dry. Two capsules with food.',
@@ -364,7 +364,7 @@ export const SUPPLEMENTS = [
     'Liver protection for veterans with a heavy-drinking past or current med load. Eight to twelve weeks of daily use lowers liver enzymes in most. Don\u2019t use during active liver disease without supervision.',
     'Recovery', 97),
   product('B007NPJ3I4', 'Activated Charcoal (Bulk Supplements)',
-    'A gut-binding agent for hangovers, food poisoning, and processed-food bloat. Use occasionally, not daily — it binds nutrients along with toxins. Take 2 grams in water away from medications.',
+    'A gut-binding agent for hangovers, food poisoning, and processed-food bloat. Use occasionally, not daily. it binds nutrients along with toxins. Take 2 grams in water away from medications.',
     'Recovery', 98),
   product('B074H4QJZ8', 'Liposomal Glutathione (Quicksilver)',
     'The body\u2019s master antioxidant in a form that actually absorbs. Useful for veterans with toxin-exposure histories from burn pits or industrial cleanup. One teaspoon, hold under the tongue 30 seconds.',
@@ -438,10 +438,10 @@ export const SUPPLEMENTS = [
     'For post-PT bruises, sprains, and muscle soreness. Apply within an hour of injury for the strongest effect. Don\u2019t use on broken skin.',
     'Recovery', 121),
   product('B0019LRYZA', 'Comfrey Root Salve (Wally\u2019s Natural)',
-    'For veterans with chronic joint and tendon pain that doesn\u2019t respond to ice. External use only — never internal. Apply twice daily for two weeks.',
+    'For veterans with chronic joint and tendon pain that doesn\u2019t respond to ice. External use only. never internal. Apply twice daily for two weeks.',
     'Recovery', 122),
   product('B073WH7N2M', 'St. John\u2019s Wort Oil (Herb Pharm)',
-    'For nerve pain, sciatica, and old surgical scars. Massage 15 minutes daily into the affected area. Don\u2019t go in the sun afterwards — it\u2019s photosensitizing.',
+    'For nerve pain, sciatica, and old surgical scars. Massage 15 minutes daily into the affected area. Don\u2019t go in the sun afterwards. it\u2019s photosensitizing.',
     'Recovery', 123),
 
   // ── ENERGY-DRINK REPLACEMENTS / GREENS / PROTEIN ─────────────────────
@@ -449,7 +449,7 @@ export const SUPPLEMENTS = [
     'A 75-ingredient daily greens powder that replaces five other supplements. Useful for the veteran short on time who wants a single floor. One scoop in water at breakfast.',
     'Greens', 124),
   product('B07KH8YBZF', 'Greens Powder (Garden of Life Raw Perfect Food)',
-    'Cheaper than AG1 with a nearly-identical profile. Tastes earthier — mix with apple juice if needed. One scoop in water daily.',
+    'Cheaper than AG1 with a nearly-identical profile. Tastes earthier. mix with apple juice if needed. One scoop in water daily.',
     'Greens', 125),
   product('B074HFFL5K', 'Whey Isolate Protein (NOW Sports)',
     'Clean protein for the veteran rebuilding strength after a tour or surgery. The isolate avoids most lactose issues. One scoop after lifts, 30g a day baseline.',
@@ -491,7 +491,7 @@ export const SUPPLEMENTS = [
 
   // ── TOPICAL / MUSCLE ─────────────────────────────────────────────────
   product('B003B3OO94', 'Magnesium Oil Spray (Now Foods)',
-    'Topical magnesium for muscle cramps and post-workout soreness. Spray on calves and feet at bedtime. Some people get a tingling — that\u2019s normal.',
+    'Topical magnesium for muscle cramps and post-workout soreness. Spray on calves and feet at bedtime. Some people get a tingling. that\u2019s normal.',
     'Recovery', 137),
   product('B074H51TX6', 'Tiger Balm Red (Extra Strength)',
     'Old-school topical analgesic with menthol and camphor. The red tin is the warmer one. Don\u2019t use under heat packs.',
@@ -508,7 +508,7 @@ export const SUPPLEMENTS = [
     'African bark with surprising data on benign prostate enlargement. Use it alongside saw palmetto for additive effect. Two capsules with breakfast.',
     'Men', 141),
   product('B0019LRYZW', 'Stinging Nettle Root (Solaray)',
-    'The root, not the leaf — different actions entirely. Supports DHT balance in older men. Cycle eight weeks on, two off.',
+    'The root, not the leaf. different actions entirely. Supports DHT balance in older men. Cycle eight weeks on, two off.',
     'Men', 142),
   product('B003B3O0RU', 'Fenugreek Extract (Nature\u2019s Way)',
     'A herb with mild data on free testosterone in lifting men. Take with breakfast for muscle preservation during cuts. Tastes maple-syrupy in sweat.',
@@ -574,7 +574,7 @@ export const SUPPLEMENTS = [
     'For veterans with TBI or post-concussion lingering symptoms. DHA is the structural fatty acid the brain rebuilds with. Two grams a day with food.',
     'Brain', 161),
   product('B074H4SYLR', 'Creatine Monohydrate (Bulk Supplements)',
-    'Brain energy support beyond muscle — under-discussed for veterans with cognitive fog. Three to five grams a day, water on top. The most-studied supplement on the market.',
+    'Brain energy support beyond muscle. under-discussed for veterans with cognitive fog. Three to five grams a day, water on top. The most-studied supplement on the market.',
     'Brain', 162),
   product('B07XWFZJYR', 'CoQ10 Ubiquinol (Doctor\u2019s Best)',
     'The reduced form of CoQ10, more bioavailable for veterans over 40. Useful for fatigue with statin use. 100mg with breakfast.',
@@ -658,7 +658,7 @@ export const SUPPLEMENTS = [
     'Ayurvedic resin for cholesterol and joint support. Two capsules twice a day. Twelve weeks for cardiovascular effect.',
     'Ayurvedic', 185),
   product('B074H4WW8C', 'Neem Capsules (Banyan Botanicals)',
-    'A bitter purifying Ayurvedic herb for skin and gut. Two capsules between meals. Only short cycles — eight weeks then break.',
+    'A bitter purifying Ayurvedic herb for skin and gut. Two capsules between meals. Only short cycles. eight weeks then break.',
     'Ayurvedic', 186),
   product('B0019GW4Y6', 'Turmeric Whole Root (Banyan Botanicals)',
     'The whole-plant Ayurvedic form, gentler on the gut than concentrated curcumin. Two capsules with each meal. Six weeks for the joint floor to lift.',
@@ -710,7 +710,7 @@ export const SUPPLEMENTS = [
     'A periwinkle-derived compound with cerebral-blood-flow research. Useful for the post-50 veteran with mild memory complaints. One capsule with breakfast.',
     'Brain', 199),
   product('B074H4RFXC', 'Huperzine A (Source Naturals)',
-    'A Chinese moss extract that slows acetylcholine breakdown — the focus neurotransmitter. Cycle three weeks on, one off. Tiny dose: 200mcg per day.',
+    'A Chinese moss extract that slows acetylcholine breakdown. the focus neurotransmitter. Cycle three weeks on, one off. Tiny dose: 200mcg per day.',
     'Brain', 200),
   product('B0019GVGCS', 'Citicoline + Phosphatidylserine Stack (Doctor\u2019s Best)',
     'A two-bottle brain-membrane and mood-cortisol stack. Useful for the over-50 transitioning veteran. Take both in the morning.',
@@ -721,7 +721,7 @@ export const SUPPLEMENTS = [
     'Pre-meal bitters to wake up the digestive system. One teaspoon 15 minutes before a heavy meal. Tastes rough; works fast.',
     'Gut', 202),
   product('B003B3OAUO', 'Betaine HCl + Pepsin (Doctor\u2019s Best)',
-    'For veterans with low stomach acid (often from PPIs or stress). Take with the largest protein meal. Stop if you feel any warmth — that means you don\u2019t need it.',
+    'For veterans with low stomach acid (often from PPIs or stress). Take with the largest protein meal. Stop if you feel any warmth. that means you don\u2019t need it.',
     'Gut', 203),
   product('B074H4QQK6', 'Ox Bile (Allergy Research Group)',
     'Useful for veterans with gallbladder removal or fat-digestion struggles. Take with the fattiest meal of the day. One capsule, evaluate over four weeks.',
