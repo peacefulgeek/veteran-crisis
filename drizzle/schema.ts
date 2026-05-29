@@ -34,7 +34,10 @@ export const articles = mysqlTable(
     slug: varchar("slug", { length: 200 }).notNull(),
     title: varchar("title", { length: 300 }).notNull(),
     metaDescription: varchar("metaDescription", { length: 320 }).notNull().default(""),
-    body: text("body").notNull(),
+    // Round 19: body lives on Bunny CDN at articles/{slug}.json or
+    // queue-{prefix}/{slug}.json. The DB column is kept nullable for legacy
+    // tools but new rows write NULL here.
+    body: text("body"),
     tldr: text("tldr"),
     category: varchar("category", { length: 80 }).notNull().default("General"),
     tags: json("tags").$type<string[]>().notNull().default([]),

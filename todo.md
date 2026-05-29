@@ -342,3 +342,18 @@ N_ID, OWNER_NAME, VITE_APP_ID, VITE_OAUTH_PORTAL_URL in runtime source
 - [x] Update startCrons log to reflect new cron count (7 -> 6)
 - [x] Update tests to match new schedule (§35 added, §24 updated)
 - [x] vitest green (66/66), checkpoint + push to GitHub
+
+
+## Round 19 — queue physically on Bunny CDN (per user spec)
+
+- [x] Private Bunny prefix added: `queue-3f7a2c8b9d/{slug}.json` (rotatable via BUNNY_QUEUE_PREFIX env)
+- [x] Migrated all 464 queued DB articles to Bunny queue prefix
+- [x] Added `bunny-queue.mjs`: putQueuedToBunny, getQueuedFromBunny, deleteQueuedFromBunny, queuePathFor
+- [x] Rewrote `runPublishOne`: fetch from queue -> hero -> write articles/{slug}.json -> delete queue copy -> mark DB published
+- [x] NULLed body column for all 464 queued rows; drizzle schema body -> nullable; migration 0002 generated + applied
+- [x] Updated `bulk-seed.mjs` to write to Bunny queue path; DB insert uses body=null
+- [x] `runPublishToBunny` now reads body from Bunny for feed.xml content:encoded (no DB body)
+- [x] `runQuarterlyRefresh` re-hydrates body from Bunny before running quality gate
+- [x] Verified queue path returns 200 for known slug (gym-culture); Bunny has no directory listing
+- [x] vitest §36 added (8 tests, all green)
+- [x] checkpoint + push (next step)

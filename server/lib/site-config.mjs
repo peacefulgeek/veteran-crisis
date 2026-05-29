@@ -18,6 +18,11 @@ export const SITE = {
   bunnyApiKey: process.env.BUNNY_API_KEY || '42c5b84f-70e4-493c-98cacd9b0731-f166-4832',
   bunnyPullZone: process.env.BUNNY_PULL_ZONE || 'https://veteran-crisis.b-cdn.net',
   bunnyHostname: process.env.BUNNY_HOSTNAME || 'ny.storage.bunnycdn.com',
+  // Round 19: queue lives on Bunny CDN under an unguessable random prefix.
+  // This is not a security boundary (anyone with the URL reads the JSON), but
+  // Bunny does not list directories, so the queue is effectively private as
+  // long as the prefix never leaks. Rotate via env on Railway if it ever does.
+  bunnyQueuePrefix: process.env.BUNNY_QUEUE_PREFIX || 'queue-3f7a2c8b9d',
 };
 
 export const VOICE = {

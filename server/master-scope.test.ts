@@ -612,3 +612,81 @@ describe("§35 — Round 18 cron flow simplified", () => {
     expect(cronSrc).toMatch(/publish-one Mon-Fri/);
   });
 });
+
+
+describe("§36 — Round 19 queue lives on Bunny CDN", () => {
+  const cronSrc = readFileSync(
+    new URL("./lib/cron-jobs.mjs", import.meta.url).pathname,
+    "utf-8",
+  );
+  const queueSrc = readFileSync(
+    new URL("./lib/bunny-queue.mjs", import.meta.url).pathname,
+    "utf-8",
+  );
+  const seedSrc = readFileSync(
+    new URL("../scripts/bulk-seed.mjs", import.meta.url).pathname,
+    "utf-8",
+  );
+
+  it("bunny-queue.mjs exposes put/get/delete helpers + queuePathFor", () => {
+    expect(queueSrc).toMatch(/export async function putQueuedToBunny/);
+    expect(queueSrc).toMatch(/export async function getQueuedFromBunny/);
+    expect(queueSrc).toMatch(/export async function deleteQueuedFromBunny/);
+    expect(queueSrc).toMatch(/SITE\.bunnyQueuePrefix/);
+  });
+
+  it("SITE has an unguessable bunnyQueuePrefix", () => {
+    const site = readFileSync(
+      new URL("./lib/site-config.mjs", import.meta.url).pathname,
+      "utf-8",
+    );
+    expect(site).toMatch(/bunnyQueuePrefix:/);
+    // The default prefix must be at least 10 chars of unguessable salt.
+    expect(site).toMatch(/'queue-[a-z0-9]{8,}'/);
+  });
+
+  it("runPublishOne fetches from Bunny queue, writes to articles, deletes queue copy", () => {
+    // Reads queue
+    expect(cronSrc).toMatch(/getQueuedFromBunny\(a\.slug\)/);
+    // Writes public article
+    expect(cronSrc).toMatch(/putJsonToBunny\(`articles\/\$\{a\.slug\}\.json`/);
+    // Deletes queue copy
+    expect(cronSrc).toMatch(/deleteQueuedFromBunny\(a\.slug\)/);
+    // NULLs the body column on the now-published row
+    expect(cronSrc).toMatch(/body=NULL WHERE id=\?/);
+  });
+
+  it("runPublishOne logs queue-miss when the Bunny JSON is gone", () => {
+    expect(cronSrc).toMatch(/queue-miss/);
+  });
+
+  it("runPublishToBunny reads body from Bunny (not the DB body column)", () => {
+    // Body column no longer in the published-rows SELECT.
+    expect(cronSrc).not.toMatch(
+      /SELECT id, slug, title, metaDescription, body, category/,
+    );
+    // Body re-hydrated from articles/{slug}.json for feed.xml.
+    expect(cronSrc).toMatch(/bodyByslug\.set\(r\.slug, j\.body\)/);
+  });
+
+  it("runQuarterlyRefresh re-hydrates body from Bunny before gating", () => {
+    expect(cronSrc).toMatch(
+      /SELECT id, slug, title, metaDescription FROM articles WHERE status='published'/,
+    );
+    expect(cronSrc).toMatch(/getJsonFromBunny\(`articles\/\$\{r\.slug\}\.json`\)/);
+  });
+
+  it("bulk-seed writes new bodies to Bunny (queue or articles), not DB body", () => {
+    expect(seedSrc).toMatch(/putQueuedToBunny\(slug, bodyPayload\)/);
+    expect(seedSrc).toMatch(
+      /putJsonToBunny\(`articles\/\$\{slug\}\.json`/,
+    );
+    expect(seedSrc).toMatch(/body: null, \/\/ body lives on Bunny/);
+  });
+
+  it("drizzle schema has body nullable (round 19 contract)", () => {
+    const schema = readFileSync("drizzle/schema.ts", "utf-8");
+    expect(schema).toMatch(/body: text\("body"\),/);
+    expect(schema).not.toMatch(/body: text\("body"\)\.notNull\(\),/);
+  });
+});

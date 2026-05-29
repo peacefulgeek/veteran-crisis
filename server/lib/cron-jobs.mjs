@@ -1,7 +1,8 @@
 import cron from 'node-cron';
 import { getConn, countArticles } from './articles-db.mjs';
 import { runQualityGate } from './article-quality-gate.mjs';
-import { putToBunny, putJsonToBunny } from './bunny.mjs';
+import { putToBunny, putJsonToBunny, assignHeroImage, getJsonFromBunny } from './bunny.mjs';
+import { getQueuedFromBunny, deleteQueuedFromBunny } from './bunny-queue.mjs';
 import { verifyAsin } from './amazon-verify.mjs';
 import { SITE } from './site-config.mjs';
 
@@ -27,22 +28,88 @@ async function logRun(conn, job, status, detail) {
 // All bulk article generation is a one-shot offline job (scripts/bulk-seed.mjs)
 // run by hand. There is no auto-top-up cron and there will not be one.
 async function runPublishOne() {
+  // Round 19 flow:
+  //   1. Pick oldest queued DB row (status='queued', ordered by queuedAt).
+  //   2. Fetch full draft JSON from Bunny at queue-{prefix}/{slug}.json.
+  //   3. Stamp publishedAt + reassign hero image (final, slug-keyed).
+  //   4. Write final JSON to articles/{slug}.json on Bunny (public).
+  //   5. Delete the queue copy on Bunny.
+  //   6. Update DB row: status='published', publishedAt=NOW(), heroUrl=final.
+  //   7. Trigger runPublishToBunny to rebuild articles/index.json + sitemap + feed.
+  // If queue is empty: log 'queue-empty' and exit. No regeneration, ever.
   const conn = await getConn();
+  let pickedSlug = null;
   try {
     const [rows] = await conn.query(
-      `SELECT id, slug FROM articles WHERE status='queued' ORDER BY queuedAt ASC LIMIT 1`,
+      `SELECT id, slug, title, category FROM articles WHERE status='queued' ORDER BY queuedAt ASC LIMIT 1`,
     );
-    if (rows.length === 0) return logRun(conn, 'publish-one', 'skipped', 'queue-empty');
+    if (rows.length === 0) {
+      await logRun(conn, 'publish-one', 'skipped', 'queue-empty');
+      return;
+    }
     const a = rows[0];
-    await conn.query(`UPDATE articles SET status='published', publishedAt=NOW() WHERE id=?`, [a.id]);
+    pickedSlug = a.slug;
+
+    // 2. Pull the queued draft from Bunny.
+    const draft = await getQueuedFromBunny(a.slug);
+    if (!draft) {
+      await logRun(
+        conn,
+        'publish-one',
+        'error',
+        `queue-miss slug=${a.slug} (no JSON on Bunny at queue prefix)`,
+      );
+      return;
+    }
+
+    // 3. Final hero (slug-keyed). assignHeroImage is idempotent + caches.
+    const heroUrl = await assignHeroImage(a.slug, a.title || a.category || '');
+
+    // 4. Write the public article JSON.
+    const publishedAtIso = new Date().toISOString();
+    const finalPayload = {
+      ...draft,
+      slug: a.slug,
+      heroUrl,
+      heroAlt: draft.heroAlt || a.title,
+      status: 'published',
+      publishedAt: publishedAtIso,
+      lastModifiedAt: publishedAtIso,
+      _queued: undefined,
+      _queuedAt: undefined,
+    };
+    delete finalPayload._queued;
+    delete finalPayload._queuedAt;
+    await putJsonToBunny(`articles/${a.slug}.json`, finalPayload);
+
+    // 5. Delete the queue copy.
+    try {
+      await deleteQueuedFromBunny(a.slug);
+    } catch (e) {
+      // Non-fatal: the next purge sweep can clean up. Log so it's visible.
+      console.warn('[publish-one] queue-delete failed (non-fatal):', a.slug, e.message);
+    }
+
+    // 6. DB row: mark published, stash hero, record body length so the
+    //    quarterly-refresh job can still gate on word count.
+    await conn.query(
+      `UPDATE articles SET status='published', publishedAt=NOW(),
+              lastModifiedAt=NOW(), heroUrl=?, body=NULL WHERE id=?`,
+      [heroUrl, a.id],
+    );
+
     await logRun(conn, 'publish-one', 'ok', `slug=${a.slug}`);
   } catch (e) {
-    await logRun(conn, 'publish-one', 'error', String(e.message || e));
+    await logRun(
+      conn,
+      'publish-one',
+      'error',
+      `${pickedSlug ? `slug=${pickedSlug} ` : ''}${String(e.message || e)}`,
+    );
   } finally {
     await conn.end();
   }
-  // Re-publish JSON + XML to Bunny so the public CDN reflects the new state.
-  // Done outside the conn try/finally so a Bunny hiccup never blocks publishing.
+  // 7. Rebuild the public index + sitemap + feed.
   try { await runPublishToBunny(); } catch (e) { console.error('[publish-to-bunny] post-publish run failed:', e); }
 }
 
@@ -52,16 +119,16 @@ async function runPublishOne() {
 async function runPublishToBunny() {
   const conn = await getConn();
   try {
-    // Pull ALL articles regardless of status so every one of the 500 has a JSON
-    // on Bunny. Public surfaces still filter to status='published'.
+    // Round 19: bodies no longer live in DB. Pull published rows for metadata,
+    // then for the feed body merge in body text from Bunny articles/{slug}.json.
     const [all] = await conn.query(
-      `SELECT id, slug, title, metaDescription, body, category, tags, heroUrl, heroAlt, ogImage,
+      `SELECT id, slug, title, metaDescription, category, tags, heroUrl, heroAlt, ogImage,
               author, status, queuedAt, publishedAt, lastModifiedAt, readingTime, wordCount
-         FROM articles ORDER BY publishedAt IS NULL, publishedAt DESC, id ASC`,
+         FROM articles WHERE status='published'
+         ORDER BY publishedAt DESC, id ASC`,
     );
     const safe = (v) => { if (v == null) return []; if (Array.isArray(v) || typeof v === 'object') return v; if (typeof v !== 'string') return []; try { return JSON.parse(v); } catch { return []; } };
-    const decoratedAll = all.map(r => ({ ...r, tags: safe(r.tags) }));
-    const decorated = decoratedAll.filter(r => r.status === 'published');
+    const decorated = all.map(r => ({ ...r, tags: safe(r.tags) }));
 
     // 1a. Public index JSON — only published rows, used by /api/articles
     const indexPayload = {
@@ -77,11 +144,13 @@ async function runPublishToBunny() {
     // (Round 14) Admin all-index removed: never publish total/byStatus library size to a public CDN.
     // Admins query MySQL directly when they need the queue overview.
 
-    // 2. Per-article JSON — PUBLISHED ONLY. Queued slugs MUST NOT be uploaded
-    // to the public CDN: that would let crawlers and any visitor enumerate the
-    // queue, leaking library size and unfinished drafts. Admin tooling must
-    // query MySQL directly for queued content (Round 15 security fix).
+    // 2. Per-article JSON — Round 19: each article's full body already lives at
+    // articles/{slug}.json on Bunny (written by runPublishOne). This loop is now
+    // a metadata-refresh pass that re-stamps lastModifiedAt + ensures the JSON
+    // exists. If a JSON is missing (e.g. backfill), we skip and log so the
+    // operator can re-run scripts/seed-bunny-json.mjs.
     let perOk = 0;
+    let perMiss = 0;
     const CONCURRENCY = 8;
     const queue = [...decorated];
     await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
@@ -89,7 +158,19 @@ async function runPublishToBunny() {
         const r = queue.shift();
         if (!r) break;
         try {
-          await putJsonToBunny(`articles/${r.slug}.json`, r);
+          const existing = await getJsonFromBunny(`articles/${r.slug}.json`);
+          if (!existing || !existing.body) { perMiss++; continue; }
+          const merged = {
+            ...existing,
+            // Refresh metadata fields from the DB pointer row.
+            heroUrl: r.heroUrl || existing.heroUrl,
+            heroAlt: r.heroAlt || existing.heroAlt,
+            publishedAt: r.publishedAt ? new Date(r.publishedAt).toISOString() : existing.publishedAt,
+            lastModifiedAt: r.lastModifiedAt ? new Date(r.lastModifiedAt).toISOString() : (existing.lastModifiedAt || existing.publishedAt),
+            readingTime: r.readingTime || existing.readingTime,
+            wordCount: r.wordCount || existing.wordCount,
+          };
+          await putJsonToBunny(`articles/${r.slug}.json`, merged);
           perOk++;
         } catch (err) {
           console.warn('[publish-to-bunny] per-article failed', r.slug, err.message);
@@ -115,8 +196,16 @@ async function runPublishToBunny() {
     ].join('\n');
     await putToBunny('feeds/sitemap.xml', sitemapXml, 'application/xml; charset=utf-8', 'public, max-age=300');
 
-    // 4. feed.xml (RSS 2.0, top 30)
+    // 4. feed.xml (RSS 2.0, top 30). Bodies fetched from Bunny so we don't
+    //    need to round-trip through MySQL for full text.
     const top30 = decorated.slice(0, 30);
+    const bodyByslug = new Map();
+    await Promise.all(top30.map(async r => {
+      try {
+        const j = await getJsonFromBunny(`articles/${r.slug}.json`);
+        if (j && j.body) bodyByslug.set(r.slug, j.body);
+      } catch {}
+    }));
     const escape = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
     const cdata = (s) => `<![CDATA[${String(s || '').replace(/]]>/g, ']]]]><![CDATA[>')}]]>`;
     const rfc822 = (d) => new Date(d || Date.now()).toUTCString();
@@ -124,12 +213,12 @@ async function runPublishToBunny() {
     const items = top30.map(r => {
       const url = `${SITE.baseUrl}/articles/${r.slug}`;
       const enclosure = r.heroUrl ? `<enclosure url="${escape(r.heroUrl)}" type="image/webp" length="0" />` : '';
-      return ['<item>', `<title>${escape(r.title)}</title>`, `<link>${escape(url)}</link>`, `<guid isPermaLink="true">${escape(url)}</guid>`, `<pubDate>${rfc822(r.publishedAt)}</pubDate>`, `<atom:updated>${new Date(r.lastModifiedAt || r.publishedAt || Date.now()).toISOString()}</atom:updated>`, `<dc:creator>${escape(r.author || SITE.author)}</dc:creator>`, r.category ? `<category>${escape(r.category)}</category>` : '', `<description>${cdata(r.metaDescription || '')}</description>`, `<content:encoded>${cdata(r.body || '')}</content:encoded>`, enclosure, '</item>'].filter(Boolean).join('');
+      return ['<item>', `<title>${escape(r.title)}</title>`, `<link>${escape(url)}</link>`, `<guid isPermaLink="true">${escape(url)}</guid>`, `<pubDate>${rfc822(r.publishedAt)}</pubDate>`, `<atom:updated>${new Date(r.lastModifiedAt || r.publishedAt || Date.now()).toISOString()}</atom:updated>`, `<dc:creator>${escape(r.author || SITE.author)}</dc:creator>`, r.category ? `<category>${escape(r.category)}</category>` : '', `<description>${cdata(r.metaDescription || '')}</description>`, `<content:encoded>${cdata(bodyByslug.get(r.slug) || '')}</content:encoded>`, enclosure, '</item>'].filter(Boolean).join('');
     }).join('\n');
     const feedXml = ['<?xml version="1.0" encoding="UTF-8"?>', '<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom">', '<channel>', `<title>${escape(SITE.name)}</title>`, `<link>${escape(SITE.baseUrl)}</link>`, `<atom:link href="${escape(SITE.baseUrl)}/feed.xml" rel="self" type="application/rss+xml" />`, `<description>${escape(SITE.oneLine || '')}</description>`, '<language>en-us</language>', `<lastBuildDate>${rfc822(newest || Date.now())}</lastBuildDate>`, '<generator>Veteran Crisis Editorial Engine</generator>', items, '</channel>', '</rss>'].join('\n');
     await putToBunny('feeds/feed.xml', feedXml, 'application/rss+xml; charset=utf-8', 'public, max-age=300');
 
-    await logRun(conn, 'publish-to-bunny', 'ok', `pub-index(${decorated.length})+${perOk}/${decorated.length} per-article(published-only)+sitemap+feed`);
+    await logRun(conn, 'publish-to-bunny', 'ok', `pub-index(${decorated.length})+${perOk}/${decorated.length} per-article(missing=${perMiss})+sitemap+feed`);
   } catch (e) {
     await logRun(conn, 'publish-to-bunny', 'error', String(e.stack || e.message || e));
   } finally { await conn.end(); }
@@ -181,13 +270,19 @@ async function runQuarterlyRefresh() {
   const conn = await getConn();
   try {
     const [rows] = await conn.query(
-      `SELECT id, slug, title, body, metaDescription FROM articles WHERE status='published'`,
+      `SELECT id, slug, title, metaDescription FROM articles WHERE status='published'`,
     );
     let pass = 0;
     let fail = 0;
     const failures = [];
     for (const r of rows) {
-      const result = runQualityGate(r.body || '');
+      // Round 19: body lives on Bunny, not in DB.
+      let body = '';
+      try {
+        const j = await getJsonFromBunny(`articles/${r.slug}.json`);
+        body = (j && j.body) || '';
+      } catch {}
+      const result = runQualityGate(body);
       if (result && result.failures && result.failures.length === 0) {
         pass++;
       } else {

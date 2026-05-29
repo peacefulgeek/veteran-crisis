@@ -6,7 +6,8 @@
 import { getConn, slugify, insertArticle, pickRelated, countArticles, listPublishedDates } from '../server/lib/articles-db.mjs';
 import { writeArticle } from '../server/lib/article-writer.mjs';
 import { runQualityGate } from '../server/lib/article-quality-gate.mjs';
-import { libraryUrl, assignHeroImage } from '../server/lib/bunny.mjs';
+import { libraryUrl, assignHeroImage, putJsonToBunny } from '../server/lib/bunny.mjs';
+import { putQueuedToBunny } from '../server/lib/bunny-queue.mjs';
 import { buildSeedTopics, PRIMARY_TOPICS } from '../server/lib/seed-topics.mjs';
 import { PRODUCT_CATALOG } from '../server/lib/product-catalog.mjs';
 
@@ -100,7 +101,13 @@ async function main() {
     const queuedAt = new Date(Date.now() - (TARGET_TOTAL - i) * 60_000); // staggered queue order
     const publishedAt = willPublish ? spreadPublishDate(publishedCount, TARGET_PUBLISHED) : null;
 
-    await insertArticle(conn, {
+    // Round 19: body lives on Bunny CDN, not in DB.
+    //   - published articles: write to articles/{slug}.json (public)
+    //   - queued articles:    write to queue-{prefix}/{slug}.json (private path)
+    // The DB row carries only metadata + the slug pointer.
+    const wordCount = gate.signals.words;
+    const readingTime = Math.max(5, Math.round(wordCount / 230));
+    const bodyPayload = {
       slug,
       title: topic.title,
       metaDescription: topic.title.slice(0, 300),
@@ -111,8 +118,37 @@ async function main() {
       author: 'The Oracle Lover',
       heroUrl,
       heroAlt: topic.title,
-      wordCount: gate.signals.words,
-      readingTime: Math.max(5, Math.round(gate.signals.words / 230)),
+      asinsUsed: out.productsUsed,
+      internalLinksUsed: out.internalLinksUsed,
+      wordCount,
+      readingTime,
+      openerType,
+      conclusionType,
+    };
+    try {
+      if (willPublish) {
+        await putJsonToBunny(`articles/${slug}.json`, { ...bodyPayload, status: 'published', publishedAt: publishedAt?.toISOString() });
+      } else {
+        await putQueuedToBunny(slug, bodyPayload);
+      }
+    } catch (e) {
+      console.error('[seed] bunny write failed for', slug, e.message);
+      continue;
+    }
+
+    await insertArticle(conn, {
+      slug,
+      title: topic.title,
+      metaDescription: topic.title.slice(0, 300),
+      body: null, // body lives on Bunny
+      tldr: '',
+      category: topic.category,
+      tags: topic.tags,
+      author: 'The Oracle Lover',
+      heroUrl,
+      heroAlt: topic.title,
+      wordCount,
+      readingTime,
       asinsUsed: out.productsUsed,
       internalLinksUsed: out.internalLinksUsed,
       status: willPublish ? 'published' : 'queued',

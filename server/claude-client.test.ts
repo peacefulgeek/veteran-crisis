@@ -31,6 +31,6 @@ describe('claude-client', () => {
       expect(text.length).toBeGreaterThan(0);
       expect(r.usage).toBeDefined();
     },
-    20_000,
+    45_000, // Anthropic API can be slow; allow up to 45s before failing.
   );
 });
