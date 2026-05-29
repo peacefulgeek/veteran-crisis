@@ -97,7 +97,8 @@ async function startServer() {
   // Bind to 0.0.0.0 so Railway's ingress can reach the process.
   server.listen(port, "0.0.0.0", () => {
     console.log(`Server running on http://0.0.0.0:${port}/`);
-    // 6 crons (top-up, publish, sitemap-ping, asin-health, health-beacon, publish-to-bunny)
+    // 6 crons (publish-one Mon-Fri 09:00 MT, quarterly-refresh, publish-to-bunny,
+    // sitemap-ping, asin-health, health-beacon). No top-up / fallback generation.
     // Per user directive: env var defaults to enabled; only explicit "false" disables.
     try { startCrons({ enabled: process.env.AUTO_GEN_ENABLED !== "false" }); } catch (e) { console.error("[cron] start failed:", e); }
   });

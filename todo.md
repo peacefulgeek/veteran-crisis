@@ -328,3 +328,17 @@ N_ID, OWNER_NAME, VITE_APP_ID, VITE_OAUTH_PORTAL_URL in runtime source
 - [x] /robots.txt -> 25 AI crawlers + sitemap + feed sitemap
 - [x] Final FIXED / VERIFIED / BLOCKED report
 - [x] Clean git push to peacefulgeek/veteran-crisis main
+
+
+## Round 18 — simplified publishing flow
+
+- [x] Delete `runTopUpQueue` cron entirely (no more fallback generation)
+- [x] Slim `runPublishOne` to 1× per weekday at 09:00 America/Denver, Mon-Fri only
+- [x] Remove per-day publish cap (cron only fires once/day so cap is moot)
+- [x] Keep `runQuarterlyRefresh` as-is (nightly quality-gate sweep)
+- [x] Keep `runPublishToBunny` (re-runs after each publish + every 6h to keep CDN fresh)
+- [x] Keep `runHealthBeacon`, `runSitemapPing`, `runAsinHealthCheck` (operational, not generative)
+- [x] When queue empty: publish-one logs `queue-empty` and exits cleanly
+- [x] Update startCrons log to reflect new cron count (7 -> 6)
+- [x] Update tests to match new schedule (§35 added, §24 updated)
+- [x] vitest green (66/66), checkpoint + push to GitHub

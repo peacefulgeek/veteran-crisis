@@ -215,12 +215,14 @@ describe("master scope §16: /feed.xml RSS endpoint", () => {
   });
 });
 
-describe("§24 — 100-article publishing cap removed (Round 13)", () => {
+describe("§24 — 100-article publishing cap removed (Round 13, simplified Round 18)", () => {
   it("publish cron has NO hard cap", () => {
     const cron = readFileSync("server/lib/cron-jobs.mjs", "utf-8");
+    // Per-day caps and 100-article caps are all gone. Round 18 reduced this
+    // to one cron, Mon-Fri 09:00, that publishes exactly one queued article.
     expect(cron).not.toMatch(/cap=100/);
     expect(cron).not.toMatch(/Number\(capRows\[0\]\.n\)\s*>=\s*100/);
-    expect(cron).toMatch(/100-cap removed/);
+    expect(cron).not.toMatch(/>=\s*4\)/); // old 4-per-day cap also gone
   });
 });
 
@@ -572,3 +574,41 @@ function makeApp(): any {
     head() {},
   };
 }
+
+
+describe("§35 — Round 18 cron flow simplified", () => {
+  const cronSrc = readFileSync(
+    new URL("./lib/cron-jobs.mjs", import.meta.url).pathname,
+    "utf-8",
+  );
+
+  it("does not contain runTopUpQueue (no fallback generation)", () => {
+    expect(cronSrc).not.toMatch(/runTopUpQueue/);
+    expect(cronSrc).not.toMatch(/buildSeedTopics/);
+    expect(cronSrc).not.toMatch(/insertArticle/);
+    expect(cronSrc).not.toMatch(/writeArticle/);
+  });
+
+  it("publish-one runs Mon-Fri at 09:00 only ('0 9 * * 1-5')", () => {
+    expect(cronSrc).toMatch(/'0 9 \* \* 1-5'/);
+    // The old multi-slot 7,11,15,19 schedule must be gone.
+    expect(cronSrc).not.toMatch(/0 7,11,15,19/);
+  });
+
+  it("publish-one stops cleanly on empty queue (no regeneration)", () => {
+    // Source-level contract: the only exit when queue is empty is 'queue-empty' log.
+    expect(cronSrc).toMatch(/'queue-empty'/);
+    // Per-day cap was removed because the cron only fires once per weekday.
+    expect(cronSrc).not.toMatch(/already=/);
+  });
+
+  it("quarterly-refresh cron is preserved", () => {
+    expect(cronSrc).toMatch(/runQuarterlyRefresh/);
+    expect(cronSrc).toMatch(/'0 4 \* \* \*'/);
+  });
+
+  it("startCrons announces 6 crons (down from 7) and lists publish-one Mon-Fri", () => {
+    expect(cronSrc).toMatch(/6 crons scheduled/);
+    expect(cronSrc).toMatch(/publish-one Mon-Fri/);
+  });
+});

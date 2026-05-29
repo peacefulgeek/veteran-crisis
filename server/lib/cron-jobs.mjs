@@ -1,10 +1,8 @@
 import cron from 'node-cron';
-import { getConn, insertArticle, slugify, pickRelated, countArticles } from './articles-db.mjs';
-import { writeArticle } from './article-writer.mjs';
+import { getConn, countArticles } from './articles-db.mjs';
 import { runQualityGate } from './article-quality-gate.mjs';
-import { assignHeroImage, putToBunny, putJsonToBunny } from './bunny.mjs';
+import { putToBunny, putJsonToBunny } from './bunny.mjs';
 import { verifyAsin } from './amazon-verify.mjs';
-import { buildSeedTopics } from './seed-topics.mjs';
 import { SITE } from './site-config.mjs';
 
 const TZ = 'America/Denver';
@@ -18,63 +16,19 @@ async function logRun(conn, job, status, detail) {
   } catch {}
 }
 
-async function runTopUpQueue() {
-  const conn = await getConn();
-  try {
-    const c = await countArticles(conn);
-    if (c.queued >= 470) return logRun(conn, 'top-up-queue', 'skipped', `queued=${c.queued}`);
-    const need = Math.min(470 - c.queued, 6);
-    const topics = buildSeedTopics();
-    const [existing] = await conn.query(`SELECT slug FROM articles`);
-    const have = new Set(existing.map(r => r.slug));
-    let added = 0;
-    for (const t of topics) {
-      if (added >= need) break;
-      const slug = slugify(t.title);
-      if (have.has(slug)) continue;
-      const related = await pickRelated(conn, slug, 6);
-      const include = Math.random() < 0.23;
-      const out = await writeArticle({
-        topic: t.title, category: t.category, tags: t.tags,
-        relatedArticles: related,
-        openerType: ['gut-punch', 'question', 'story', 'counterintuitive'][Math.floor(Math.random() * 4)],
-        conclusionType: ['cta', 'reflection', 'question', 'challenge', 'benediction'][Math.floor(Math.random() * 5)],
-        includeBacklink: include,
-      });
-      const gate = runQualityGate(out.body, { minWords: 1200, maxWords: 2500 });
-      const heroUrl = await assignHeroImage(slug);
-      await insertArticle(conn, {
-        slug, title: t.title, metaDescription: t.title.slice(0, 300),
-        body: out.body, tldr: '', category: t.category, tags: t.tags,
-        author: 'The Oracle Lover', heroUrl, heroAlt: t.title,
-        wordCount: gate.signals.words,
-        readingTime: Math.max(5, Math.round(gate.signals.words / 230)),
-        asinsUsed: out.productsUsed, internalLinksUsed: out.internalLinksUsed,
-        status: 'queued',
-      });
-      added++;
-    }
-    await logRun(conn, 'top-up-queue', 'ok', `added=${added}`);
-  } catch (e) {
-    await logRun(conn, 'top-up-queue', 'error', String(e.stack || e.message || e));
-  } finally { await conn.end(); }
-}
-
+// Round 18: the entire publishing flow is two crons.
+//   1. runPublishOne  — 1 article per weekday (Mon-Fri 09:00 MT), promotes the
+//      oldest queued article to published. When the queue is empty, it logs
+//      'queue-empty' and exits cleanly. No fallback generation — when the 500
+//      bulk-seeded articles are exhausted, the cron simply stops doing anything.
+//   2. runQuarterlyRefresh — nightly quality-gate sweep over every published
+//      article. Failures are logged so the operator can decide what to do.
+//
+// All bulk article generation is a one-shot offline job (scripts/bulk-seed.mjs)
+// run by hand. There is no auto-top-up cron and there will not be one.
 async function runPublishOne() {
   const conn = await getConn();
   try {
-    const hour = new Date().toLocaleString('en-US', { timeZone: TZ, hour: '2-digit', hour12: false });
-    const h = parseInt(hour, 10);
-    if (h < 6 || h >= 19) return logRun(conn, 'publish-one', 'skipped', `hour=${h}`);
-    // 100-cap removed (Round 13). Cron will continue promoting queued articles
-    // until the queue is empty. Per-day limit (~4) still applies, see below.
-    const [todayRows] = await conn.query(
-      `SELECT COUNT(*) AS n FROM articles
-        WHERE status='published'
-          AND DATE(CONVERT_TZ(publishedAt, '+00:00', '-06:00'))
-              = DATE(CONVERT_TZ(NOW(), '+00:00', '-06:00'))`,
-    );
-    if (Number(todayRows[0].n) >= 4) return logRun(conn, 'publish-one', 'skipped', `already=${todayRows[0].n}`);
     const [rows] = await conn.query(
       `SELECT id, slug FROM articles WHERE status='queued' ORDER BY queuedAt ASC LIMIT 1`,
     );
@@ -82,9 +36,12 @@ async function runPublishOne() {
     const a = rows[0];
     await conn.query(`UPDATE articles SET status='published', publishedAt=NOW() WHERE id=?`, [a.id]);
     await logRun(conn, 'publish-one', 'ok', `slug=${a.slug}`);
-  } catch (e) { await logRun(conn, 'publish-one', 'error', String(e.message || e)); }
-  finally { await conn.end(); }
-  // Re-publish JSON+XML to Bunny so the public CDN reflects the new state.
+  } catch (e) {
+    await logRun(conn, 'publish-one', 'error', String(e.message || e));
+  } finally {
+    await conn.end();
+  }
+  // Re-publish JSON + XML to Bunny so the public CDN reflects the new state.
   // Done outside the conn try/finally so a Bunny hiccup never blocks publishing.
   try { await runPublishToBunny(); } catch (e) { console.error('[publish-to-bunny] post-publish run failed:', e); }
 }
@@ -257,19 +214,33 @@ export function startCrons({ enabled } = {}) {
     console.log('[cron] disabled (AUTO_GEN_ENABLED=false)');
     return;
   }
-  cron.schedule('0 */6 * * *', () => runTopUpQueue().catch(console.error), { timezone: TZ });
-  cron.schedule('0 7,11,15,19 * * *', () => runPublishOne().catch(console.error), { timezone: TZ });
-  cron.schedule('30 2 * * *', () => runSitemapPing().catch(console.error), { timezone: TZ });
-  cron.schedule('30 3 * * *', () => runAsinHealthCheck().catch(console.error), { timezone: TZ });
-  cron.schedule('*/30 * * * *', () => runHealthBeacon().catch(console.error), { timezone: TZ });
-  // Refresh Bunny-cached JSON/XML every 6 hours (in addition to post-publish run).
-  cron.schedule('15 */6 * * *', () => runPublishToBunny().catch(console.error), { timezone: TZ });
-  // Quarterly refresh: nightly quality-gate sweep over every published article.
+
+  // Editorial: 1 article per weekday at 09:00 America/Denver. Cron expression
+  // '0 9 * * 1-5' = at minute 0 of hour 9 on Mon-Fri. When the queue is empty
+  // the job logs 'queue-empty' and does nothing else. No fallback generation.
+  cron.schedule('0 9 * * 1-5', () => runPublishOne().catch(console.error), { timezone: TZ });
+
+  // Editorial: nightly quality-gate sweep over every published article.
   cron.schedule('0 4 * * *', () => runQuarterlyRefresh().catch(console.error), { timezone: TZ });
-  // Boot-time health beacon + initial Bunny push so the CDN is in sync after a Railway redeploy.
+
+  // Operational (kept — these don't generate content):
+  //   Refresh Bunny-cached JSON/XML every 6h so the public CDN never drifts.
+  cron.schedule('15 */6 * * *', () => runPublishToBunny().catch(console.error), { timezone: TZ });
+  //   Sitemap ping (Google + Bing) once per day.
+  cron.schedule('30 2 * * *', () => runSitemapPing().catch(console.error), { timezone: TZ });
+  //   ASIN health check — verify Amazon affiliate links still resolve.
+  cron.schedule('30 3 * * *', () => runAsinHealthCheck().catch(console.error), { timezone: TZ });
+  //   Health beacon every 30 minutes for observability.
+  cron.schedule('*/30 * * * *', () => runHealthBeacon().catch(console.error), { timezone: TZ });
+
+  // Boot-time: log a beacon + push the latest article state to Bunny so a
+  // Railway redeploy lands with a fresh CDN.
   setTimeout(() => runHealthBeacon().catch(console.error), 5_000);
   setTimeout(() => runPublishToBunny().catch(console.error), 10_000);
-  console.log('[cron] 7 crons scheduled (top-up, publish, sitemap-ping, asin-health, health-beacon, publish-to-bunny, quarterly-refresh)');
+
+  console.log(
+    '[cron] 6 crons scheduled (publish-one Mon-Fri 09:00 MT, quarterly-refresh, publish-to-bunny, sitemap-ping, asin-health, health-beacon)',
+  );
 }
 
-export const _internal = { runTopUpQueue, runPublishOne, runSitemapPing, runAsinHealthCheck, runHealthBeacon, runPublishToBunny, runQuarterlyRefresh };
+export const _internal = { runPublishOne, runSitemapPing, runAsinHealthCheck, runHealthBeacon, runPublishToBunny, runQuarterlyRefresh };
