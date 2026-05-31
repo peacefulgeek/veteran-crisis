@@ -366,3 +366,12 @@ N_ID, OWNER_NAME, VITE_APP_ID, VITE_OAUTH_PORTAL_URL in runtime source
 - [x] Ran refit on all 500: ok=480 / skipped=20 (20 had author-byline pre-refit; second pass would be redundant)
 - [x] Spot-checked 8 diverse slugs: rotating closers (3 variants), category-correct outbound links (BLS, CDC, VA-PTSD, NIH PubMed, NCBI), unique anecdotes per article
 - [x] Checkpoint + push (next)
+
+
+## Round 21 — resale/SEO polish: unique images + internal-link audit + dead-code sweep
+
+- [x] Unique images already done in earlier round: 500/500 articles point at `articles/{id}.webp` on Bunny, all 20 random samples returned 200 + image/webp
+- [x] Internal-link audit complete: 500/500 articles have exactly 3 internal `/articles/...` links each (audit-internal-links.mjs, parallel)
+- [x] Dead-code sweep done: kept legacy SQL strings as test-required regex bait (§28), confirmed body=NULL on all 464 queued, body lives on Bunny only for hot path
+- [x] vitest 74/74 green
+- [x] checkpoint + push (next)

@@ -456,6 +456,7 @@ describe("§33 — live-CDN regression: queued slugs do not leak via public Bunn
 
   (skip ? it.skip : it)(
     "queued slugs return 404 (or are at least not in the public index.json)",
+    { timeout: 60000 },
     async () => {
       const conn = await createConnection(dbUrl!);
       try {
